@@ -16,6 +16,7 @@ import {
   trackHintUsed,
 } from '@/lib/progress';
 import type { Pack, Step, Story, BranchPoint, StepOrBranch } from '@/lib/types';
+import { runCommand, resetSimulator } from '@/lib/shell-sim';
 
 // ─── ANSI color helpers ───────────────────────────────────────────────────────
 const A = {
@@ -319,6 +320,7 @@ export default function TerminalGame() {
         q.currentStepId = null;
         q.completedAt = null;
         q.startedAt = new Date().toISOString();
+        resetSimulator(); // fresh filesystem + git state for the new story
       }
 
       setStory(state, pack.id, story.id);
@@ -400,9 +402,22 @@ export default function TerminalGame() {
             break;
           }
 
-          // Run verification
+          // For shell/which commands — run through simulator and show output first
+          if (step.verify.mode === 'shell' || step.verify.mode === 'which') {
+            const simOut = runCommand(input);
+            if (simOut.stdout) {
+              w(simOut.stdout.replace(/(?<!\r)\n/g, '\r\n'));
+              if (!simOut.stdout.endsWith('\n')) wln();
+            }
+            if (simOut.stderr) {
+              w(A.red + simOut.stderr.replace(/(?<!\r)\n/g, '\r\n') + A.reset);
+              if (!simOut.stderr.endsWith('\n')) wln();
+            }
+          }
+
+          // Verify
           w(`  ${A.dim}verifying...${A.reset}`);
-          await delay(400);
+          await delay(350);
           w('\r' + ' '.repeat(20) + '\r');
 
           let result;
