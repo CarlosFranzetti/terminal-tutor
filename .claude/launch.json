@@ -1,0 +1,10 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Terminal Tutor (start)",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["bin/tt.js"]
+    }
+  ]
+}
