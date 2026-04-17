@@ -1,7 +1,6 @@
 # Terminal Tutor
 
-**Gamified, story-driven CLI trainer that runs in your real terminal.**
-Learn `gh`, the GitHub Copilot CLI, and more through short narrative quests that verify real commands in your shell.
+**Gamified, story-driven CLI trainer — learn by doing, in your real terminal or your browser.**
 
 ```
    ______              _           __   ______      __
@@ -10,115 +9,162 @@ Learn `gh`, the GitHub Copilot CLI, and more through short narrative quests that
   /_/  \___/_/ /_/ /_/_/_//_/\_,_/_/    /_/  \_,_/\__/\___/_/
 ```
 
-## Why
+## What is this?
 
-CLI tools are powerful but the on-ramp is brutal: sprawling docs, out-of-date blog posts, copy-paste commands you don't understand. Terminal Tutor replaces that with **quests** — short, themed missions where each beat of the story maps to a real command you run in your own shell. Terminal Tutor watches what you run, verifies it worked, and unlocks the next beat. You finish a quest having actually used the tool, not just read about it.
+Terminal Tutor replaces sprawling docs and copy-paste tutorials with **quests** — short, narrative missions where every beat of the story maps to a real command you run in your shell (or in the browser). It watches what you run, verifies it worked, and unlocks the next beat.
 
-## Quick start
+---
+
+## Play it now — browser version 🌐
+
+The web version runs entirely in your browser. No install, no setup. Looks and feels exactly like a real terminal.
+
+👉 **[terminal-tutor.vercel.app](https://terminal-tutor.vercel.app)**
+
+Features:
+- xterm.js terminal emulator — real keyboard input, cursor, scrollback
+- Simulated shell responds to `ls`, `cd`, `cat`, `git`, `gh`, `npm`, and more
+- Saves progress to `localStorage` — quit any time, resume later
+- Two quests included (more coming)
+
+---
+
+## Run it locally — CLI version 💻
 
 ```bash
 # Requires Node 18+
+git clone https://github.com/carlosfranzetti/terminal-tutor.git
+cd terminal-tutor
 npm install
-npm link       # exposes the `tt` command
-
-tt             # launch Terminal Tutor
+node bin/tt.js
 ```
 
-You can also run it without installing:
+Or link it globally:
 
 ```bash
-npx terminal-tutor
+npm link
+tt
 ```
 
-On first launch Terminal Tutor shows an animated splash, lists the quest packs it found, and lets you pick one. Each quest has a story, numbered steps, progressive hints, and an XP reward. Progress saves after every step, so you can quit (`q`) any time and resume later.
+---
 
-## Controls
+## Quests
 
-Inside a quest:
+| Quest | Tool | Steps | XP |
+|---|---|---|---|
+| **Ship the Ripoff** | `gh` + `git` | 12 | 250 |
+| **Summon the Copilot** | `gh copilot` | 9 | 220 |
 
-- **Enter** — run the command you typed
-- **h** — ask for a hint (first one is oblique, each next one is more specific)
-- **s** — skip this step (still advances the story, no XP)
-- **q** — quit and save progress
+### Ship the Ripoff
+It's your first day at Midnight Polygon Studios. The CEO wants *StreetRacer Unlimited* — a GTA-inspired open-world racing game — live on GitHub before noon. You learn `ls`, `cat`, `git status/add/commit/push`, `gh auth`, `gh repo create`, and `gh repo view`.
 
-## What ships in MVP
+### Summon the Copilot
+Learn to install and use the GitHub Copilot CLI extension — `gh extension`, `gh copilot explain/suggest/run`.
 
-Two quest packs are included:
+---
 
-- **GitHub CLI** — install, auth, create a repo, open a PR, review issues.
-- **GitHub Copilot CLI** — install, auth, and three core prompts (`explain`, `suggest`, `run`).
+## Controls (CLI)
 
-Plus the engine that runs them, a resume-anywhere progress store at `~/.terminal-tutor/progress.json`, a colorful animated UI, and a hint ladder with progressive XP penalties.
+Inside any quest:
+
+| Key | Action |
+|---|---|
+| `Enter` | Run the command |
+| `h` | Request a hint (penalty: −25% XP per hint) |
+| `s` | Skip this step (no XP) |
+| `q` | Quit and save progress |
+
+Controls are identical in the browser version.
+
+---
 
 ## Adding your own quest pack
 
-A quest pack is a single file under `quests/` that exports a plain object. The engine loads every `quests/*.js` automatically — no registration, no rebuild.
+A pack is a single `.js` file in `quests/` (CLI) or `web/lib/quests/` (web). Drop it in and it auto-loads.
 
 ```js
 // quests/my-pack.js
 export default {
-  id: "my-pack",
-  title: "The Pack Title",
-  synopsis: "One-line pitch for the quest browser.",
-  tool: "my-cli",
+  id: 'my-pack',
+  title: 'The Pack Title',
+  synopsis: 'One-line pitch.',
+  tool: 'my-cli',
   steps: [
     {
-      id: "install",
-      narration: "You stand at the gates of the Shell Kingdom...",
-      objective: "Check that `my-cli` is installed.",
-      verify: { mode: "which", binary: "my-cli" },
-      hints: [
-        "You need to prove the tool exists on your machine.",
-        "`which` is the classic way to ask your shell where a binary lives.",
-        "Try: `which my-cli`"
-      ],
-      xp: 20
+      id: 'step-1',
+      narration: 'The story beat...',
+      objective: 'What the player must do.',
+      verify: { mode: 'shell', stdoutContains: 'expected output', exitCode: 0 },
+      hints: ['Vague hint', 'More specific', 'Nearly explicit — try: `command`'],
+      xp: 30,
     },
-    {
-      id: "hello",
-      narration: "The gatekeeper wants a greeting in its own tongue.",
-      objective: "Run `my-cli hello` and see the greeting.",
-      verify: {
-        mode: "shell",
-        stdoutContains: "hello",
-        exitCode: 0
-      },
-      hints: ["Run the tool with the command it asks for.", "Try: `my-cli hello`"],
-      xp: 30
-    }
-  ]
+  ],
 };
 ```
 
-Drop the file in `quests/`, relaunch Terminal Tutor, and it appears in the browser.
+**Verification modes:**
+- `shell` — runs the command; supports `exitCode`, `stdoutContains`, `stdoutMatches` (regex), `stderrContains`, `custom(result)`
+- `which` — checks a binary is on PATH
+- `prompt` — multiple-choice question
 
-### Verification modes
+---
 
-- `shell` — runs the user's command in `/bin/sh -c`; supports `exitCode`, `stdoutContains`, `stdoutMatches` (regex), `stderrContains`, and `custom(result)` predicates.
-- `which` — checks whether a binary is on PATH.
-- `prompt` — multiple-choice question, no shell execution.
+## Web app (browser version)
 
-### Design guidelines for packs
+The web version lives in `web/` — a Next.js 14 app with App Router and TypeScript.
 
-Write narration like a text adventure, not a textbook. Keep each step to one real command. Write at least three hints per step, ordered from oblique to nearly-explicit. Prefer `stdoutContains` over exact matches so the step stays robust to upstream CLI output changes. If a step will create files or remote state, say so in the narration.
+```
+web/
+  app/              Next.js app router
+  components/
+    TerminalGame.tsx  xterm.js terminal + full game loop
+  lib/
+    quests/         Quest pack definitions (TypeScript)
+    shell-sim.ts    Simulated shell (ls, git, gh, npm, …)
+    verifier.ts     Predicate evaluation (same logic as CLI)
+    xp.ts           XP / level math
+    hints.ts        Hint ladder + XP penalty
+    progress.ts     localStorage progress store
+```
+
+### Develop the web version
+
+```bash
+cd web
+npm install
+npm run dev     # http://localhost:3000
+npm run build   # production build
+```
+
+### Deploy to Vercel
+
+```bash
+cd web
+npx vercel --prod
+```
+
+---
 
 ## Project layout
 
 ```
-bin/tt.js          # entrypoint
-src/app.js         # screens and flow
-src/engine/        # loader, runner, verifier, hints, progress, xp
-src/ui/            # theme, splash, browser, player, components
-quests/            # pack files — each pack is one file
-test/              # unit and integration tests
-TDD.md             # full technical design
-CLAUDE.md          # repo guide for Claude
+bin/tt.js          CLI entrypoint
+src/app.js         CLI screens and flow
+src/engine/        loader, runner, verifier, hints, progress, xp
+src/ui/            theme, splash, browser, player, components
+quests/            CLI quest packs
+web/               Browser version (Next.js)
+test/              Unit and integration tests
+CLAUDE.md          Repo guide for AI assistants
+TDD.md             Full technical design
 ```
+
+---
 
 ## Contributing
 
-Open an issue or PR. New quest packs are the highest-leverage contribution: one well-written pack teaches a whole CLI. Bug fixes to verifiers and the engine are the second. Please run the test suite (`npm test`) before opening a PR.
+Open an issue or PR. New quest packs are the highest-leverage contribution — one well-written pack teaches a whole CLI tool. Run `npm test` before opening a PR against the CLI.
 
 ## License
 
-MIT.
+MIT — Carlos Franzetti
