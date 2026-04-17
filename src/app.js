@@ -4,7 +4,7 @@ import { loadPacks, findPack } from './engine/loader.js';
 import { runQuest } from './engine/runner.js';
 import { loadProgress } from './engine/progress.js';
 import { showSplash } from './ui/splash.js';
-import { pickQuest, renderProfileHeader, showNoPacks } from './ui/browser.js';
+import { pickQuest, pickStory, renderProfileHeader, showNoPacks } from './ui/browser.js';
 import { createPlayerUi } from './ui/player.js';
 import { palette, symbols } from './ui/theme.js';
 
@@ -19,7 +19,7 @@ export async function runApp() {
 
   const ui = createPlayerUi();
 
-  // Main loop: browser → play → back to browser.
+  // Main loop: browser → story picker → play → back to browser.
   while (true) {
     const state = loadProgress();
     renderProfileHeader(state.profile);
@@ -28,7 +28,6 @@ export async function runApp() {
     try {
       pick = await pickQuest(packs, state);
     } catch (err) {
-      // Inquirer throws on Ctrl+C; treat as clean exit.
       if (err?.name === 'ExitPromptError') return goodbye();
       throw err;
     }
@@ -41,8 +40,18 @@ export async function runApp() {
       continue;
     }
 
+    // Story picker
+    let story;
     try {
-      const result = await runQuest(pack, ui);
+      story = await pickStory(pack, loadProgress());
+    } catch (err) {
+      if (err?.name === 'ExitPromptError') return goodbye();
+      throw err;
+    }
+    if (!story) continue; // user went back
+
+    try {
+      const result = await runQuest(pack, story, ui);
       if (result.quit) {
         console.log('  ' + palette.muted(`${symbols.arrow} progress saved. return any time.`));
       }
@@ -55,6 +64,6 @@ export async function runApp() {
 
 function goodbye() {
   console.log('');
-  console.log('  ' + palette.accent(`${symbols.sparkle} may your shells be colorful, traveler. ${symbols.sparkle}`));
+  console.log('  ' + palette.accent(`${symbols.sparkle} stay sharp, operator. ${symbols.sparkle}`));
   console.log('');
 }

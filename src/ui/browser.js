@@ -1,4 +1,4 @@
-// Quest browser: pick a pack to play.
+// Quest browser: pick a pack and story to play.
 
 import { select } from '@inquirer/prompts';
 import { palette, pinkCyan, neon, symbols } from './theme.js';
@@ -8,7 +8,7 @@ import { progressToNextLevel, levelForXp } from '../engine/xp.js';
 export function renderProfileHeader(profile) {
   const level = levelForXp(profile.xp || 0);
   const progress = progressToNextLevel(profile.xp || 0);
-  const line1 = `${symbols.gem} ${palette.accent('Profile')}  ${palette.muted('level')} ${neon(String(level))}  ${palette.muted('xp')} ${pinkCyan(String(profile.xp || 0))}`;
+  const line1 = `${symbols.gem} ${palette.accent('Operator Profile')}  ${palette.muted('level')} ${neon(String(level))}  ${palette.muted('xp')} ${pinkCyan(String(profile.xp || 0))}`;
   const line2 = `  ${bar(progress, 30, 'magenta')}  ${palette.muted('next level')}`;
   console.log('\n' + line1);
   console.log(line2);
@@ -23,14 +23,14 @@ export async function pickQuest(packs, progressState) {
 
   const choices = packs.map((pack) => {
     const q = progressState.quests[pack.id];
-    const total = pack.steps.length;
+    const storyCount = pack.stories?.length ?? 1;
     const done = q ? q.completedStepIds.length : 0;
     const status =
       q?.completedAt ? palette.ok(`${symbols.check} completed`) :
-      done > 0 ? palette.warn(`${symbols.arrow} in progress ${done}/${total}`) :
+      done > 0 ? palette.warn(`${symbols.arrow} in progress`) :
       palette.muted(`${symbols.star} new`);
     return {
-      name: `${palette.accent(pack.title)}  ${palette.muted(symbols.bullet)}  ${palette.muted(pack.tool)}  ${palette.muted(symbols.bullet)}  ${status}\n      ${palette.muted(pack.synopsis)}`,
+      name: `${palette.accent(pack.title)}  ${palette.muted(symbols.bullet)}  ${palette.muted(pack.tool)}  ${palette.muted(`[${storyCount} stories]`)}  ${status}\n      ${palette.muted(pack.synopsis)}`,
       value: pack.id,
       short: pack.title
     };
@@ -46,6 +46,31 @@ export async function pickQuest(packs, progressState) {
 
   if (pick === '__quit__') return { action: 'exit' };
   return { action: 'play', packId: pick };
+}
+
+export async function pickStory(pack, progressState) {
+  const q = progressState.quests[pack.id];
+
+  const choices = pack.stories.map((story) => {
+    const isActive = q?.storyId === story.id;
+    const badge = isActive ? palette.warn(' ← last played') : '';
+    return {
+      name: `${palette.accent(story.title)}${badge}\n      ${palette.muted(story.setting)}`,
+      value: story.id,
+      short: story.title
+    };
+  });
+  choices.push({ name: palette.muted(`${symbols.arrow} Back`), value: '__back__', short: 'back' });
+
+  const pick = await select({
+    message: pinkCyan(`Choose a story — ${pack.title}`),
+    choices,
+    loop: false,
+    pageSize: Math.max(6, choices.length)
+  });
+
+  if (pick === '__back__') return null;
+  return pack.stories.find(s => s.id === pick) ?? null;
 }
 
 export function showNoPacks() {

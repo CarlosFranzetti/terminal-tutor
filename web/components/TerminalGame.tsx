@@ -12,36 +12,65 @@ import {
   markQuestComplete,
   ensureQuestState,
   setCurrentStep,
+  setStory,
   trackHintUsed,
 } from '@/lib/progress';
-import type { Pack, Step } from '@/lib/types';
+import type { Pack, Step, Story, BranchPoint, StepOrBranch } from '@/lib/types';
 
 // ─── ANSI color helpers ───────────────────────────────────────────────────────
 const A = {
-  reset:        '\x1b[0m',
-  bold:         '\x1b[1m',
-  dim:          '\x1b[2m',
-  green:        '\x1b[32m',
-  brightGreen:  '\x1b[92m',
-  cyan:         '\x1b[36m',
-  brightCyan:   '\x1b[96m',
-  yellow:       '\x1b[33m',
-  brightYellow: '\x1b[93m',
-  magenta:      '\x1b[35m',
-  brightMagenta:'\x1b[95m',
-  red:          '\x1b[31m',
-  white:        '\x1b[37m',
-  brightWhite:  '\x1b[97m',
-  blue:         '\x1b[34m',
-  brightBlue:   '\x1b[94m',
+  reset:         '\x1b[0m',
+  bold:          '\x1b[1m',
+  dim:           '\x1b[2m',
+  italic:        '\x1b[3m',
+  green:         '\x1b[32m',
+  brightGreen:   '\x1b[92m',
+  cyan:          '\x1b[36m',
+  brightCyan:    '\x1b[96m',
+  yellow:        '\x1b[33m',
+  brightYellow:  '\x1b[93m',
+  magenta:       '\x1b[35m',
+  brightMagenta: '\x1b[95m',
+  red:           '\x1b[31m',
+  brightRed:     '\x1b[91m',
+  white:         '\x1b[37m',
+  brightWhite:   '\x1b[97m',
+  blue:          '\x1b[34m',
+  brightBlue:    '\x1b[94m',
+  orange:        '\x1b[38;5;208m',
+  pink:          '\x1b[38;5;213m',
+  gold:          '\x1b[38;5;220m',
 };
 
-const SPLASH_ART = `
-   ______              _           __   ______      __
-  /_  __/__  ________ (_)__  ___ _/ /  /_  __/_ __/ /____  ____
-   / / / _ \\/ __/ __ // / _ \\/ _ \`/ /    / / / // / __/ _ \\/ __/
-  /_/  \\___/_/ /_/ /_/_/_//_/\\_,_/_/    /_/  \\_,_/\\__/\\___/_/
-`;
+// Rainbow cycle for the animated splash
+const RAINBOW = [
+  '\x1b[38;5;196m', // red
+  '\x1b[38;5;208m', // orange
+  '\x1b[38;5;226m', // yellow
+  '\x1b[38;5;46m',  // green
+  '\x1b[38;5;51m',  // cyan
+  '\x1b[38;5;21m',  // blue
+  '\x1b[38;5;201m', // magenta
+];
+
+// Gradient colors for settled logo
+const LOGO_GRADIENT = [A.brightCyan, A.brightBlue, A.blue, A.cyan];
+
+const LOGO_LINES = [
+  '  ████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗ ██╗',
+  '     ██╔══╝██╔════╝██╔══██╗████╗ ████║██║████╗  ██║██╔══██╗██║',
+  '     ██║   █████╗  ██████╔╝██╔████╔██║██║██╔██╗ ██║███████║██║',
+  '     ██║   ██╔══╝  ██╔══██╗██║╚██╔╝██║██║██║╚██╗██║██╔══██║██║',
+  '     ██║   ███████╗██║  ██║██║ ╚═╝ ██║██║██║ ╚████║██║  ██║███████╗',
+  '     ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝',
+  '',
+  '  ████████╗██╗   ██╗████████╗ ██████╗ ██████╗',
+  '     ██╔══╝██║   ██║╚══██╔══╝██╔═══██╗██╔══██╗',
+  '     ██║   ██║   ██║   ██║   ██║   ██║██████╔╝',
+  '     ██║   ██║   ██║   ██║   ██║   ██║██╔══██╗',
+  '     ██║   ╚██████╔╝   ██║   ╚██████╔╝██║  ██║',
+  '     ╚═╝    ╚═════╝    ╚═╝    ╚═════╝ ╚═╝  ╚═╝',
+];
 
 const BOX_WIDTH = 70;
 
@@ -84,7 +113,7 @@ export default function TerminalGame() {
     let isChoosing = false;
     let choiceLineCount = 0;
 
-    // Write helper (always use \r\n)
+    // Write helpers (always use \r\n)
     const w = (text: string) => term?.write(text.replace(/(?<!\r)\n/g, '\r\n'));
     const wln = (text = '') => w(text + '\r\n');
 
@@ -119,7 +148,6 @@ export default function TerminalGame() {
     };
 
     const redrawChoices = () => {
-      // Move cursor up to overwrite previous render
       w(`\x1b[${choiceLineCount}A`);
       renderChoices();
       wln();
@@ -140,31 +168,61 @@ export default function TerminalGame() {
         tick();
       });
 
-    // ── Delay helper ────────────────────────────────────────────────────────
     const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
-    // ────────────────────────────────────────────────────────────────────────
-    // SPLASH SCREEN
-    // ────────────────────────────────────────────────────────────────────────
-    const showSplash = async () => {
-      wln();
-      // Print ASCII art with gradient effect
-      const lines = SPLASH_ART.split('\n').filter(l => l.length > 0);
-      const colors = [A.brightCyan, A.cyan, A.brightBlue, A.blue];
-      for (let i = 0; i < lines.length; i++) {
-        wln(colors[i % colors.length] + A.bold + lines[i] + A.reset);
-        await delay(60);
+    // ─── Animate a single logo line through rainbow then settle ──────────────
+    const animateLogoLine = async (line: string, settledColor: string): Promise<void> => {
+      // Flash through rainbow colors quickly
+      for (let pass = 0; pass < RAINBOW.length; pass++) {
+        w(`\r${RAINBOW[pass]}${A.bold}${line}${A.reset}`);
+        await delay(45);
       }
+      // Settle on the gradient color
+      w(`\r${settledColor}${A.bold}${line}${A.reset}\r\n`);
+    };
+
+    // ── Full animated splash ────────────────────────────────────────────────
+    const showSplash = async () => {
+      // Clear screen with a flash
+      w('\x1b[2J\x1b[H');
       wln();
-      await typewrite(
-        A.dim + '  Gamified, story-driven CLI trainer. Learn by doing.' + A.reset,
-        14,
-      );
       wln();
-      await delay(400);
-      wln(A.brightGreen + '  ✦  Two quests loaded. Press ' + A.bold + 'Enter' + A.reset + A.brightGreen + ' to begin...' + A.reset);
+
+      // Animate logo lines with staggered rainbow effect
+      for (let i = 0; i < LOGO_LINES.length; i++) {
+        if (LOGO_LINES[i] === '') {
+          wln();
+          continue;
+        }
+        const color = LOGO_GRADIENT[i % LOGO_GRADIENT.length];
+        await animateLogoLine(LOGO_LINES[i], color);
+        await delay(20);
+      }
+
       wln();
+
+      // Glowing subtitle — typewriter with bright colors
+      const subtitle = '  ✦  Story-driven CLI training for game studio developers  ✦';
+      await typewrite(A.brightMagenta + A.bold + subtitle + A.reset, 16);
+      wln();
+      wln();
+
+      // Pulse effect on the press-enter line
+      const enterMsg = '  ▶  Press Enter to jack in...';
+      for (let pulse = 0; pulse < 2; pulse++) {
+        w(`\r${A.brightGreen}${A.bold}${enterMsg}${A.reset}`);
+        await delay(300);
+        w(`\r${A.green}${enterMsg}${A.reset}        `);
+        await delay(200);
+      }
+      w(`\r${A.brightGreen}${A.bold}${enterMsg}${A.reset}`);
+      wln();
+      wln();
+
       await readline('');
+
+      // Quick wipe
+      w('\x1b[2J\x1b[H');
     };
 
     // ────────────────────────────────────────────────────────────────────────
@@ -175,28 +233,31 @@ export default function TerminalGame() {
       const xp = state.profile.xp;
       const level = levelForXp(xp);
 
-      wln(divider());
+      wln();
+      wln(divider('═', A.brightCyan));
       wln();
       wln(
-        `  ${A.brightYellow}${A.bold}TRAVELER PROFILE${A.reset}  ` +
-        `${A.cyan}Level ${level}${A.reset}  ` +
+        `  ${A.brightYellow}${A.bold}OPERATOR PROFILE${A.reset}  ` +
+        `${A.brightCyan}Level ${level}${A.reset}  ` +
         `${A.dim}XP: ${xp}${A.reset}  ` +
         xpBar(xp, 20),
       );
       wln();
-      wln(divider());
+      wln(divider('═', A.brightCyan));
       wln();
-      wln(`  ${A.bold}${A.brightWhite}SELECT A QUEST${A.reset}`);
+      wln(`  ${A.bold}${A.brightWhite}SELECT A QUEST PACK${A.reset}`);
       wln();
 
       const opts = [
         ...allPacks.map(p => {
           const q = state.quests[p.id];
+          const storyCount = p.stories.length;
           const done = q?.completedAt ? A.brightGreen + ' ✓ completed' + A.reset : '';
           const resumed = q && !q.completedAt && q.completedStepIds.length > 0
-            ? A.yellow + ` (step ${q.completedStepIds.length + 1}/${p.steps.length})` + A.reset
+            ? A.yellow + ` (in progress)` + A.reset
             : '';
-          return `${p.title}${done}${resumed}`;
+          const stories = A.dim + ` [${storyCount} stories]` + A.reset;
+          return `${p.title}${stories}${done}${resumed}`;
         }),
         A.dim + 'Quit' + A.reset,
       ];
@@ -211,39 +272,97 @@ export default function TerminalGame() {
     };
 
     // ────────────────────────────────────────────────────────────────────────
+    // STORY PICKER
+    // ────────────────────────────────────────────────────────────────────────
+    const pickStory = async (pack: Pack): Promise<Story | null> => {
+      wln(divider('─', A.brightMagenta));
+      wln();
+      wln(`  ${A.brightMagenta}${A.bold}⚡ ${pack.title}${A.reset}`);
+      wln(`  ${A.dim}${pack.synopsis}${A.reset}`);
+      wln();
+      wln(`  ${A.brightWhite}${A.bold}CHOOSE YOUR STORY${A.reset}`);
+      wln();
+
+      const state = loadProgress();
+      const q = state.quests[pack.id];
+
+      const storyOpts = [
+        ...pack.stories.map((s, i) => {
+          const isActive = q?.storyId === s.id;
+          const badge = isActive ? A.yellow + ' ← last played' + A.reset : '';
+          return `${A.brightYellow}${i + 1}.${A.reset} ${A.bold}${s.title}${A.reset}  ${A.dim}${s.setting}${A.reset}${badge}`;
+        }),
+        A.dim + '← Back' + A.reset,
+      ];
+
+      const picked = await promptChoice(storyOpts);
+      wln();
+
+      if (picked.includes('Back')) return null;
+
+      const idx = storyOpts.indexOf(picked);
+      return pack.stories[idx] ?? null;
+    };
+
+    // ────────────────────────────────────────────────────────────────────────
     // QUEST PLAYER
     // ────────────────────────────────────────────────────────────────────────
-    const playQuest = async (pack: Pack): Promise<{ quit: boolean }> => {
+    const playQuest = async (pack: Pack, story: Story): Promise<{ quit: boolean }> => {
       const state = loadProgress();
       const q = ensureQuestState(state, pack.id);
-      const done = new Set(q.completedStepIds);
-      saveProgress(state);
 
-      // Find resume point
-      let startIdx = 0;
-      for (let i = 0; i < pack.steps.length; i++) {
-        if (!done.has(pack.steps[i].id)) { startIdx = i; break; }
-        if (i === pack.steps.length - 1) startIdx = pack.steps.length;
+      // Reset step progress when starting a new story
+      const isNewStory = q.storyId !== story.id;
+      if (isNewStory) {
+        q.storyId = story.id;
+        q.completedStepIds = [];
+        q.currentStepId = null;
+        q.completedAt = null;
+        q.startedAt = new Date().toISOString();
       }
 
-      wln();
-      wln(divider('═', A.brightCyan));
-      wln(`  ${A.brightCyan}${A.bold}⚔  ${pack.title}${A.reset}`);
-      wln(`  ${A.dim}${pack.synopsis}${A.reset}`);
-      if (startIdx > 0) wln(`  ${A.yellow}↩  Resuming from step ${startIdx + 1}${A.reset}`);
-      wln(divider('═', A.brightCyan));
+      setStory(state, pack.id, story.id);
+      saveProgress(state);
+
+      const done = new Set(q.completedStepIds);
+
+      // Show story intro with ASCII art
+      w('\x1b[2J\x1b[H');
       wln();
 
-      if (startIdx >= pack.steps.length) {
+      if (story.art) {
+        const artLines = story.art.split('\n');
+        for (const line of artLines) {
+          wln(A.brightCyan + line + A.reset);
+        }
+        wln();
+      }
+
+      wln(divider('═', A.brightMagenta));
+      wln(`  ${A.brightMagenta}${A.bold}⚡ ${pack.title}${A.reset}`);
+      wln(`  ${A.brightWhite}${A.bold}${story.title}${A.reset}`);
+      wln(`  ${A.dim}${story.setting}${A.reset}`);
+      wln(divider('═', A.brightMagenta));
+      wln();
+
+      // Flatten steps (BranchPoints will be resolved inline)
+      const allStepsToPlay = await resolveSteps(story.steps, done, pack.id, state);
+      if (!allStepsToPlay) return { quit: true }; // user quit during branch selection
+
+      const { steps: flatSteps, quit } = allStepsToPlay;
+      if (quit) return { quit: true };
+
+      // Check if already done
+      const remaining = flatSteps.filter(s => !done.has(s.id));
+      if (remaining.length === 0) {
         const s = loadProgress();
         markQuestComplete(s, pack.id);
         saveProgress(s);
-        await showQuestComplete(pack, s.profile.xp);
+        await showQuestComplete(pack, story, s.profile.xp);
         return { quit: false };
       }
 
-      for (let i = startIdx; i < pack.steps.length; i++) {
-        const step = pack.steps[i];
+      for (const step of remaining) {
         const state2 = loadProgress();
         setCurrentStep(state2, pack.id, step.id);
         saveProgress(state2);
@@ -251,7 +370,7 @@ export default function TerminalGame() {
         let hintsUsed = 0;
         let resolved = false;
 
-        await showStepIntro(step, i, pack.steps.length, pack.title);
+        await showStepIntro(step, pack.title, story.title);
 
         while (!resolved) {
           const input = await promptStep(step);
@@ -268,7 +387,7 @@ export default function TerminalGame() {
               wln();
               wln(`  ${A.yellow}💡 Hint ${hint.index + 1}/${hint.total}:${A.reset} ${hint.text}`);
             } else {
-              wln(`  ${A.dim}You have heard all I can tell you, traveler.${A.reset}`);
+              wln(`  ${A.dim}No more hints available, operator.${A.reset}`);
             }
             wln();
             continue;
@@ -302,7 +421,7 @@ export default function TerminalGame() {
             wln();
             wln(box([
               `${A.brightGreen}✓ CORRECT!${A.reset}`,
-              `${A.brightYellow}+${gained} XP${A.reset}  ${A.dim}(${A.reset}Level ${levelForXp(s4.profile.xp)}${A.dim})${A.reset}`,
+              `${A.brightYellow}+${gained} XP${A.reset}  ${A.dim}Level ${levelForXp(s4.profile.xp)}${A.reset}  ${xpBar(s4.profile.xp, 20)}`,
             ], A.brightGreen));
             wln();
             await delay(600);
@@ -310,7 +429,7 @@ export default function TerminalGame() {
           } else {
             wln();
             wln(`  ${A.red}✗ Not quite.${A.reset} ${A.dim}${result.reason || 'Try again.'}${A.reset}`);
-            wln(`  ${A.dim}Type ${A.reset}h${A.dim} for a hint, ${A.reset}s${A.dim} to skip, or try another command.${A.reset}`);
+            wln(`  ${A.dim}Type ${A.reset}h${A.dim} for a hint  ${A.reset}s${A.dim} to skip  ${A.reset}q${A.dim} to quit${A.reset}`);
             wln();
           }
         }
@@ -319,15 +438,71 @@ export default function TerminalGame() {
       const finalState = loadProgress();
       markQuestComplete(finalState, pack.id);
       saveProgress(finalState);
-      await showQuestComplete(pack, finalState.profile.xp);
+      await showQuestComplete(pack, story, finalState.profile.xp);
       return { quit: false };
     };
 
+    // ────────────────────────────────────────────────────────────────────────
+    // BRANCH RESOLUTION
+    // Walks StepOrBranch[], handles BranchPoint by prompting the user,
+    // returns a flat Step[] to play through.
+    // ────────────────────────────────────────────────────────────────────────
+    const resolveSteps = async (
+      items: StepOrBranch[],
+      done: Set<string>,
+      packId: string,
+      progressState: ReturnType<typeof loadProgress>,
+    ): Promise<{ steps: Step[]; quit: boolean } | null> => {
+      const flat: Step[] = [];
+
+      for (const item of items) {
+        if (item.type === 'branch') {
+          const bp = item as BranchPoint;
+
+          // Show branch narration
+          wln();
+          wln(divider('─', A.brightYellow));
+          await typewrite('  ' + A.brightYellow + A.bold + bp.narration + A.reset, 12);
+          wln('\r\n');
+          wln(`  ${A.brightWhite}Choose your path:${A.reset}`);
+          wln();
+
+          const branchOpts = bp.branches.map(
+            b => `${A.bold}${b.label}${A.reset}  ${A.dim}${b.flavor}${A.reset}`
+          );
+          const picked = await promptChoice(branchOpts);
+          wln();
+
+          if (picked === '__quit__') return { steps: flat, quit: true };
+
+          const branchIdx = branchOpts.indexOf(picked);
+          const branch = bp.branches[branchIdx];
+          if (branch) {
+            flat.push(...branch.steps);
+          }
+        } else {
+          flat.push(item as Step);
+        }
+      }
+
+      return { steps: flat, quit: false };
+    };
+
     // ── Step intro ──────────────────────────────────────────────────────────
-    const showStepIntro = async (step: Step, idx: number, total: number, questTitle: string) => {
+    const showStepIntro = async (step: Step, questTitle: string, storyTitle: string) => {
       wln(divider('─', A.dim));
-      wln(`  ${A.dim}${questTitle}  •  Step ${idx + 1} / ${total}${A.reset}`);
+      wln(`  ${A.dim}${questTitle}  •  ${storyTitle}${A.reset}`);
       wln();
+
+      // ASCII art if present
+      if (step.art) {
+        const artLines = step.art.split('\n');
+        for (const line of artLines) {
+          wln(A.brightCyan + A.dim + line + A.reset);
+        }
+        wln();
+      }
+
       await typewrite('  ' + A.white + step.narration + A.reset, 12);
       wln('\r\n');
       wln(box([
@@ -351,19 +526,26 @@ export default function TerminalGame() {
     };
 
     // ── Quest complete ──────────────────────────────────────────────────────
-    const showQuestComplete = async (pack: Pack, totalXp: number) => {
+    const showQuestComplete = async (pack: Pack, story: Story, totalXp: number) => {
       wln();
-      wln(divider('═', A.brightYellow));
+      wln(divider('═', A.gold));
       wln();
-      await typewrite(
-        `  ${A.brightYellow}${A.bold}✦ QUEST COMPLETE: ${pack.title} ✦${A.reset}`,
-        14,
-      );
-      wln('\r\n');
+
+      // Animate completion message with rainbow
+      const msg = `  ★  MISSION ACCOMPLISHED: ${story.title}  ★`;
+      for (let i = 0; i < RAINBOW.length; i++) {
+        w(`\r${RAINBOW[i]}${A.bold}${msg}${A.reset}`);
+        await delay(80);
+      }
+      w(`\r${A.gold}${A.bold}${msg}${A.reset}\r\n`);
+
+      wln();
+      wln(`  ${A.dim}Pack:${A.reset} ${pack.title}`);
+      wln(`  ${A.dim}Story:${A.reset} ${story.title}`);
       wln(`  Total XP: ${A.brightGreen}${totalXp}${A.reset}  •  Level: ${A.brightCyan}${levelForXp(totalXp)}${A.reset}`);
       wln(`  ${xpBar(totalXp, 40)}`);
       wln();
-      wln(divider('═', A.brightYellow));
+      wln(divider('═', A.gold));
       wln();
       await delay(600);
     };
@@ -372,7 +554,6 @@ export default function TerminalGame() {
     // KEY HANDLER
     // ────────────────────────────────────────────────────────────────────────
     const handleKey = (key: string, domEvent: KeyboardEvent) => {
-      // Multiple-choice navigation
       if (isChoosing) {
         if (domEvent.key === 'ArrowUp') {
           choiceIndex = Math.max(0, choiceIndex - 1);
@@ -395,7 +576,6 @@ export default function TerminalGame() {
         return;
       }
 
-      // Readline
       if (isReading) {
         if (domEvent.key === 'Enter') {
           const line = inputBuffer;
@@ -405,7 +585,6 @@ export default function TerminalGame() {
           const resolve = resolveReadline!;
           resolveReadline = null;
 
-          // Map single-char shortcuts
           if (line === 'h' || line === 'H') { resolve('__hint__'); return; }
           if (line === 's' || line === 'S') { resolve('__skip__'); return; }
           if (line === 'q' || line === 'Q') { resolve('__quit__'); return; }
@@ -438,15 +617,18 @@ export default function TerminalGame() {
         const pack = await showBrowser();
         if (!pack) break;
 
-        const result = await playQuest(pack);
+        const story = await pickStory(pack);
+        if (!story) continue; // back to pack browser
+
+        const result = await playQuest(pack, story);
         if (result.quit) {
-          wln(`  ${A.dim}→ Progress saved. Return any time.${A.reset}`);
+          wln(`  ${A.dim}→ Progress saved. Return to the terminal any time.${A.reset}`);
           wln();
         }
       }
 
       wln();
-      wln(`  ${A.brightMagenta}✨ May your shells be colorful, traveler. ✨${A.reset}`);
+      wln(`  ${A.brightMagenta}${A.bold}✦ Connection terminated. Stay sharp, operator. ✦${A.reset}`);
       wln();
     };
 
@@ -461,33 +643,33 @@ export default function TerminalGame() {
     ]).then(([{ Terminal }, { FitAddon }]) => {
       term = new Terminal({
         theme: {
-          background:     '#0a0a0f',
-          foreground:     '#d0d0d8',
-          cursor:         '#00ff88',
-          cursorAccent:   '#0a0a0f',
-          selectionBackground: '#00ff8830',
-          black:          '#1a1a2e',
-          red:            '#ff5555',
-          green:          '#50fa7b',
-          yellow:         '#f1fa8c',
-          blue:           '#6272a4',
-          magenta:        '#ff79c6',
-          cyan:           '#8be9fd',
-          white:          '#d0d0d8',
-          brightBlack:    '#44475a',
-          brightRed:      '#ff6e6e',
-          brightGreen:    '#69ff94',
-          brightYellow:   '#ffffa5',
-          brightBlue:     '#d6acff',
-          brightMagenta:  '#ff92df',
-          brightCyan:     '#a4ffff',
-          brightWhite:    '#ffffff',
+          background:          '#06060f',
+          foreground:          '#c8c8d8',
+          cursor:              '#00ffaa',
+          cursorAccent:        '#06060f',
+          selectionBackground: '#00ffaa22',
+          black:               '#1a1a2e',
+          red:                 '#ff5555',
+          green:               '#50fa7b',
+          yellow:              '#f1fa8c',
+          blue:                '#6272a4',
+          magenta:             '#ff79c6',
+          cyan:                '#8be9fd',
+          white:               '#c8c8d8',
+          brightBlack:         '#44475a',
+          brightRed:           '#ff6e6e',
+          brightGreen:         '#69ff94',
+          brightYellow:        '#ffffa5',
+          brightBlue:          '#d6acff',
+          brightMagenta:       '#ff92df',
+          brightCyan:          '#a4ffff',
+          brightWhite:         '#ffffff',
         },
         fontSize: 14,
         fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", "Courier New", monospace',
         cursorBlink: true,
         cursorStyle: 'block',
-        scrollback: 2000,
+        scrollback: 3000,
         allowProposedApi: true,
         convertEol: true,
       });
@@ -522,7 +704,7 @@ export default function TerminalGame() {
       style={{
         width: '100vw',
         height: '100vh',
-        background: '#0a0a0f',
+        background: '#06060f',
         overflow: 'hidden',
       }}
     />

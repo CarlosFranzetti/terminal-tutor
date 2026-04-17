@@ -28,14 +28,13 @@ export function saveProgress(state: ProgressState): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
-  } catch {
-    // ignore storage errors
-  }
+  } catch {}
 }
 
 export function ensureQuestState(state: ProgressState, questId: string): QuestState {
   if (!state.quests[questId]) {
     state.quests[questId] = {
+      storyId: null,
       completedStepIds: [],
       currentStepId: null,
       hintsUsed: {},
@@ -46,7 +45,12 @@ export function ensureQuestState(state: ProgressState, questId: string): QuestSt
   return state.quests[questId];
 }
 
-export function markStepComplete(state: ProgressState, questId: string, stepId: string, xpGained: number): void {
+export function markStepComplete(
+  state: ProgressState,
+  questId: string,
+  stepId: string,
+  xpGained: number,
+): void {
   const q = ensureQuestState(state, questId);
   if (!q.completedStepIds.includes(stepId)) q.completedStepIds.push(stepId);
   state.profile.xp = (state.profile.xp || 0) + xpGained;
@@ -55,6 +59,10 @@ export function markStepComplete(state: ProgressState, questId: string, stepId: 
 
 export function setCurrentStep(state: ProgressState, questId: string, stepId: string): void {
   ensureQuestState(state, questId).currentStepId = stepId;
+}
+
+export function setStory(state: ProgressState, questId: string, storyId: string): void {
+  ensureQuestState(state, questId).storyId = storyId;
 }
 
 export function markQuestComplete(state: ProgressState, questId: string): void {

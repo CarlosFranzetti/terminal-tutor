@@ -1,169 +1,358 @@
-// Quest pack: GitHub Copilot CLI — "Summon the Copilot"
-// Teaches: install/verify, auth, and three core prompts (explain/suggest/run).
+// Quest pack: Ghost in the Shell — 3 stories, branching paths.
+// Teaches: gh copilot explain, gh copilot suggest.
+
+const GHOST_ART = `
+  ╔══════════════════╗
+  ║  ◉  COPILOT  ◉  ║
+  ║   [  ONLINE  ]   ║
+  ╚══════════════════╝
+    |            |
+   / \\          / \\
+`;
+
+const DEBUG_ART = `
+  ⚠  PRODUCTION DOWN  ⚠
+  ─────────────────────
+  ERROR: segfault @ 0x4f
+  STACK: physics.js:412
+  TIME:  03:17:44 UTC
+  ─────────────────────
+`;
+
+const HIRE_ART = `
+  ┌─────────────────────┐
+  │  NEW TICKET #4471   │
+  │  Priority: P0       │
+  │  Assignee: You      │
+  │  Due: TODAY         │
+  └─────────────────────┘
+`;
 
 export default {
   id: 'copilot-cli',
-  title: 'Summon the Copilot',
-  synopsis: "Call a pair programmer into your terminal with GitHub Copilot's CLI.",
+  title: 'Ghost in the Shell',
+  synopsis: "Three stories about using `gh copilot` to explain errors and suggest commands when you're stuck.",
   tool: 'gh copilot',
-  steps: [
+  stories: [
+
+    // ── STORY 1: Summon the Copilot ──────────────────────────────────────────
     {
-      id: 'gh-present',
-      narration:
-        "A Copilot cannot fly without a runway. First, confirm the `gh` runway is under your feet.",
-      objective: 'Confirm the base `gh` binary is installed.',
-      verify: { mode: 'which', binary: 'gh' },
-      hints: [
-        'You need `gh` before the Copilot extension will run.',
-        'Ask your shell where the binary lives.',
-        'Try: `which gh`'
-      ],
-      xp: 20
+      id: 'summon-the-copilot',
+      title: 'Summon the Copilot',
+      setting: 'Standup in 20 minutes. Your team is asking about "that AI thing in the terminal." Time to learn it.',
+      art: GHOST_ART,
+      steps: [
+        {
+          id: 'c1-which',
+          narration: "Standup in 20 minutes. Someone on Slack just asked: 'Does anyone know that AI terminal thing?' You do not know that AI terminal thing. Yet. First question: is `gh` even on this machine?",
+          objective: 'Confirm the `gh` binary is on your PATH.',
+          verify: { mode: 'which', binary: 'gh' },
+          hints: ['You need to know if `gh` is installed.', 'Your shell can tell you where a binary lives.', 'Try: `which gh`'],
+          xp: 15
+        },
+        {
+          id: 'c1-extension-list',
+          narration: '`gh` is installed. Now check if the copilot extension is already set up.',
+          objective: 'List the installed `gh` extensions to check for copilot.',
+          verify: {
+            mode: 'shell', exitCode: 0,
+            custom: r => ({ ok: r.exitCode === 0, reason: 'expected extension list output' })
+          },
+          hints: ['`gh extension` manages extensions.', 'The subcommand to see what is installed is `list`.', 'Try: `gh extension list`'],
+          xp: 20
+        },
+        {
+          id: 'c1-concept',
+          type: 'branch',
+          narration: 'Copilot extension is listed. Two ways to find out what it does: ask it to explain itself, or just try a suggestion.',
+          branches: [
+            {
+              label: 'Ask gh copilot to explain what it does',
+              flavor: 'Learn the theory first.',
+              steps: [
+                {
+                  id: 'c1-b1-help',
+                  narration: "Good instinct. Check the help text before diving in.",
+                  objective: 'Print the gh copilot help output.',
+                  verify: {
+                    mode: 'shell',
+                    custom: r => ({ ok: /copilot|explain|suggest|Usage|Available/i.test(r.stdout + r.stderr), reason: 'expected copilot help text' })
+                  },
+                  hints: ['`gh copilot` has a help flag.', 'Most CLIs respond to `--help`.', 'Try: `gh copilot --help`'],
+                  xp: 20
+                }
+              ]
+            },
+            {
+              label: 'Jump straight to asking it to suggest a command',
+              flavor: 'Learn by doing.',
+              steps: [
+                {
+                  id: 'c1-b2-suggest',
+                  narration: "Learn by firing. Use `gh copilot suggest` on a real-world need.",
+                  objective: 'Use `gh copilot suggest` to ask how to list files sorted by date.',
+                  verify: {
+                    mode: 'shell',
+                    custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected copilot suggest output' })
+                  },
+                  hints: ['`gh copilot suggest` takes a natural language question.', 'Put the question in quotes.', 'Try: `gh copilot suggest "list files sorted by modification date"`'],
+                  xp: 25
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'c1-auth',
+          narration: "Now check your auth status. Copilot requires GitHub authentication.",
+          objective: 'Check GitHub CLI authentication status.',
+          verify: {
+            mode: 'shell',
+            custom: r => ({ ok: /github\.com|Logged in|not logged|status/i.test(r.stdout + r.stderr), reason: 'expected auth output' })
+          },
+          hints: ['`gh auth` manages authentication.', 'Try: `gh auth status`'],
+          xp: 20
+        },
+        {
+          id: 'c1-explain',
+          narration: "Auth good. Use `gh copilot explain` on something people always Google.",
+          objective: 'Use `gh copilot explain` to explain what `ls -la` does.',
+          verify: {
+            mode: 'shell',
+            custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected explanation output' })
+          },
+          hints: ['`gh copilot explain` takes a command and explains it.', 'Put the command in quotes.', 'Try: `gh copilot explain "ls -la"`'],
+          xp: 25
+        }
+      ]
     },
+
+    // ── STORY 2: Debug at 3am ────────────────────────────────────────────────
     {
-      id: 'extension-list',
-      narration:
-        "Copilot lives as an *extension* of the GitHub CLI. Look into your tool belt and list what is already installed.",
-      objective: 'List installed `gh` extensions (even if the list is empty).',
-      verify: {
-        mode: 'shell',
-        exitCode: 0
-      },
-      hints: [
-        'There is a whole `gh extension` subcommand family.',
-        'You want to *list* the extensions.',
-        'Try: `gh extension list`'
-      ],
-      xp: 20
+      id: 'debug-at-3am',
+      title: 'Debug at 3am',
+      setting: 'Production down. Cryptic error. Stack Overflow has nothing. You have gh copilot.',
+      art: DEBUG_ART,
+      steps: [
+        {
+          id: 'd1-survey',
+          narration: "3:17am. PagerDuty just woke you up. The physics engine crashed in production. The error: `Segmentation fault (core dumped)` — which tells you everything and nothing.",
+          objective: 'List files in the current directory to orient yourself.',
+          verify: {
+            mode: 'shell', exitCode: 0,
+            custom: r => ({ ok: r.stdout.length > 0 || r.exitCode === 0, reason: 'expected directory listing' })
+          },
+          hints: ['See what files are in the current directory.', 'Try: `ls -la`'],
+          xp: 10
+        },
+        {
+          id: 'd1-gh-version',
+          narration: "`gh` is your lifeline right now. Confirm it is installed.",
+          objective: 'Print the `gh` version to confirm it is installed.',
+          verify: { mode: 'shell', exitCode: 0, stdoutMatches: 'gh version' },
+          hints: ['Most CLIs support a version flag.', 'Try: `gh --version`'],
+          xp: 15
+        },
+        {
+          id: 'd1-auth',
+          narration: "Version checks out. Confirm you are authenticated before using copilot.",
+          objective: 'Check your GitHub CLI authentication status.',
+          verify: {
+            mode: 'shell',
+            custom: r => ({ ok: /github\.com|Logged in|not logged/i.test(r.stdout + r.stderr), reason: 'expected auth output' })
+          },
+          hints: ['Try: `gh auth status`'],
+          xp: 15
+        },
+        {
+          id: 'd1-branch',
+          type: 'branch',
+          narration: "Authenticated. The error is `Segmentation fault (core dumped)` from physics.js. Two things you could ask copilot: explain the error, or explain the deploy script that triggered it.",
+          branches: [
+            {
+              label: 'Explain the error message itself',
+              flavor: 'Understand the crash before touching the code.',
+              steps: [
+                {
+                  id: 'd1-b1-explain',
+                  narration: "Understand what you are dealing with before you touch anything.",
+                  objective: 'Use `gh copilot explain` to decode a segfault error message.',
+                  verify: {
+                    mode: 'shell',
+                    custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected explanation' })
+                  },
+                  hints: ['`gh copilot explain` decodes commands and errors.', 'Try: `gh copilot explain "Segmentation fault (core dumped)"`'],
+                  xp: 25
+                }
+              ]
+            },
+            {
+              label: 'Explain the deploy script that triggered the crash',
+              flavor: 'Find the cause at the deployment level.',
+              steps: [
+                {
+                  id: 'd1-b2-deploy',
+                  narration: "Sometimes the error is not the bug — it is the deploy command that exposed it.",
+                  objective: 'Use `gh copilot explain` to decode what the deploy script does.',
+                  verify: {
+                    mode: 'shell',
+                    custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected explanation' })
+                  },
+                  hints: ['`gh copilot explain` works on any command.', 'Try: `gh copilot explain "node --max-old-space-size=512 physics.js"`'],
+                  xp: 25
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'd1-suggest',
+          narration: "You understand the crash now — it is a memory issue. Ask copilot to suggest the right Node.js flag to increase the memory limit.",
+          objective: 'Use `gh copilot suggest` to find the right Node.js memory flag.',
+          verify: {
+            mode: 'shell',
+            custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected suggestion output' })
+          },
+          hints: ['`gh copilot suggest` takes a natural-language question.', 'Try: `gh copilot suggest "increase node.js memory limit when running a script"`'],
+          xp: 30
+        },
+        {
+          id: 'd1-resolved',
+          narration: "Copilot suggested `--max-old-space-size=4096`. You restart the service. Physics engine stabilizes. 4:03am. You did it without Stack Overflow.",
+          objective: 'Confirm your gh extension list one final time.',
+          verify: {
+            mode: 'shell', exitCode: 0,
+            custom: r => ({ ok: r.exitCode === 0, reason: 'expected extension list' })
+          },
+          hints: ['Try: `gh extension list`'],
+          xp: 15
+        }
+      ]
     },
+
+    // ── STORY 3: The New Hire's Secret Weapon ────────────────────────────────
     {
-      id: 'copilot-concept',
-      narration:
-        "Before you summon it, answer: what is the Copilot CLI *for*, in one sentence?",
-      objective: 'Pick the best description of the GitHub Copilot CLI.',
-      verify: {
-        mode: 'prompt',
-        choices: [
-          'An AI pair programmer that suggests and explains shell commands in your terminal',
-          'A service that auto-merges your pull requests',
-          'A lightweight IDE for git',
-          'A chatbot for filing GitHub issues'
-        ],
-        answer: 'An AI pair programmer that suggests and explains shell commands in your terminal'
-      },
-      hints: [
-        'Copilot is an AI.',
-        'It runs *in your terminal*, not in a browser.',
-        'Its job is to help you write and understand shell commands.'
-      ],
-      xp: 20
-    },
-    {
-      id: 'copilot-help',
-      narration:
-        "The incantation for the summoning is `gh copilot`. Before you summon, read its tome of spells.",
-      objective: 'Show the help page for `gh copilot`.',
-      verify: {
-        mode: 'shell',
-        exitCode: 0,
-        custom: (r) => ({
-          ok: /copilot|Usage|COMMANDS|Available/i.test(r.stdout + r.stderr),
-          reason: 'expected help text — contains usage or command names'
-        })
-      },
-      hints: [
-        '`gh` is the caster, `copilot` is the spell.',
-        'Every subcommand in `gh` responds to `--help`.',
-        'Try: `gh copilot --help`'
-      ],
-      xp: 25
-    },
-    {
-      id: 'auth-reminder',
-      narration:
-        "Even an AI Copilot refuses to fly for strangers. Check whether `gh` knows who you are.",
-      objective: 'Print your `gh` auth status.',
-      verify: {
-        mode: 'shell',
-        custom: (r) => ({
-          ok: /github\.com|Logged in|not logged|status/i.test(r.stdout + r.stderr),
-          reason: 'expected auth status output (logged in or not)'
-        })
-      },
-      hints: [
-        'Same subcommand family as the GitHub CLI quest.',
-        'It starts with `gh auth`.',
-        'Try: `gh auth status`'
-      ],
-      xp: 20
-    },
-    {
-      id: 'explain-prompt',
-      narration:
-        "The Copilot lands. Its first gift is the power to *explain* commands you do not understand. Echo a command you'd like demystified — even a simple one.",
-      objective: 'Print a command string you would like explained (using `echo`).',
-      verify: {
-        mode: 'shell',
-        exitCode: 0,
-        stdoutMatches: '.+'
-      },
-      hints: [
-        'Pretend you are about to ask Copilot "what does this do?"',
-        'Echo the command you would paste in.',
-        'Try: `echo "tar -czvf archive.tar.gz ./src"`'
-      ],
-      xp: 25
-    },
-    {
-      id: 'suggest-prompt',
-      narration:
-        "The Copilot's second gift: it *suggests* commands from plain English. Ask it (in your own voice, via echo) for a command that does something useful.",
-      objective: 'Print a natural-language request (containing the word "how").',
-      verify: {
-        mode: 'shell',
-        exitCode: 0,
-        stdoutContains: 'how'
-      },
-      hints: [
-        'Write the sentence you would put after `gh copilot suggest`.',
-        'It should start with "how do I…" or include "how".',
-        'Try: `echo "how do I find large files in my home directory"`'
-      ],
-      xp: 25
-    },
-    {
-      id: 'run-prompt',
-      narration:
-        "The third gift: *run*. Copilot can execute a command it suggests, with your consent. Echo a safe command you'd let it run.",
-      objective: 'Print a safe command involving `ls`.',
-      verify: {
-        mode: 'shell',
-        exitCode: 0,
-        stdoutContains: 'ls'
-      },
-      hints: [
-        'Keep it read-only — nothing destructive.',
-        '`ls -la` or `ls -1` are good candidates.',
-        'Try: `echo "ls -la"`'
-      ],
-      xp: 25
-    },
-    {
-      id: 'summon-banner',
-      narration:
-        "The Copilot bows. To seal the pact, etch the summoning phrase into the air of your terminal.",
-      objective: 'Print a line containing "copilot summoned".',
-      verify: {
-        mode: 'shell',
-        exitCode: 0,
-        stdoutContains: 'copilot summoned'
-      },
-      hints: [
-        'Use echo.',
-        'Include the exact phrase `copilot summoned`.',
-        'Try: `echo "copilot summoned"`'
-      ],
-      xp: 40
+      id: 'new-hire-secret-weapon',
+      title: "The New Hire's Secret Weapon",
+      setting: "Week 1. Impossible ticket. Build a CLI pipeline in bash. You barely know bash.",
+      art: HIRE_ART,
+      steps: [
+        {
+          id: 'n1-orient',
+          narration: "Week 1. Your tech lead drops Ticket #4471: 'Build a CLI pipeline: compress video assets, upload to S3, invalidate the CDN cache.' You have one day. Your secret weapon: `gh copilot suggest`.",
+          objective: 'List the current directory to see what assets exist.',
+          verify: {
+            mode: 'shell', exitCode: 0,
+            custom: r => ({ ok: r.stdout.length > 0 || r.exitCode === 0, reason: 'expected directory listing' })
+          },
+          hints: ['Start by seeing what you are working with.', 'Try: `ls -la`'],
+          xp: 10
+        },
+        {
+          id: 'n1-check-gh',
+          narration: "Your secret weapon: `gh copilot suggest` can write bash commands for you. First — confirm `gh` is installed.",
+          objective: 'Print the `gh` CLI version.',
+          verify: { mode: 'shell', exitCode: 0, stdoutMatches: 'gh version' },
+          hints: ['Try: `gh --version`'],
+          xp: 15
+        },
+        {
+          id: 'n1-check-ext',
+          narration: "Good. Confirm the copilot extension is installed.",
+          objective: 'List installed `gh` extensions.',
+          verify: {
+            mode: 'shell', exitCode: 0,
+            custom: r => ({ ok: r.exitCode === 0, reason: 'expected extension list' })
+          },
+          hints: ['Try: `gh extension list`'],
+          xp: 15
+        },
+        {
+          id: 'n1-help',
+          narration: "Copilot is there. Know what you are asking: `explain` for understanding, `suggest` for command generation.",
+          objective: 'Print the gh copilot help text.',
+          verify: {
+            mode: 'shell',
+            custom: r => ({ ok: /copilot|explain|suggest|Usage|Available/i.test(r.stdout + r.stderr), reason: 'expected help text' })
+          },
+          hints: ['Try: `gh copilot --help`'],
+          xp: 15
+        },
+        {
+          id: 'n1-auth',
+          narration: "Read the manual. Now: are you authenticated?",
+          objective: 'Confirm your GitHub CLI authentication status.',
+          verify: {
+            mode: 'shell',
+            custom: r => ({ ok: /github\.com|Logged in|not logged/i.test(r.stdout + r.stderr), reason: 'expected auth status' })
+          },
+          hints: ['Try: `gh auth status`'],
+          xp: 15
+        },
+        {
+          id: 'n1-pipeline-branch',
+          type: 'branch',
+          narration: "The pipeline has two parts: compress the video assets, then upload to S3. Where do you start?",
+          branches: [
+            {
+              label: 'Ask copilot to suggest a video compression command first',
+              flavor: 'Compress before upload. Logical order.',
+              steps: [
+                {
+                  id: 'n1-b1-compress',
+                  narration: "Compress first, upload second. Ask copilot for the ffmpeg command.",
+                  objective: 'Use `gh copilot suggest` to generate a video compression command.',
+                  verify: {
+                    mode: 'shell',
+                    custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected suggestion output' })
+                  },
+                  hints: ['`gh copilot suggest` takes a natural language question.', 'Try: `gh copilot suggest "compress all mp4 files to 720p using ffmpeg"`'],
+                  xp: 30
+                }
+              ]
+            },
+            {
+              label: 'Ask copilot how to upload a directory to S3 first',
+              flavor: 'Understand the destination before the pipeline.',
+              steps: [
+                {
+                  id: 'n1-b2-s3',
+                  narration: "Start with the destination. Once you know how to upload, the compression step becomes clear.",
+                  objective: 'Use `gh copilot suggest` to generate an AWS S3 upload command.',
+                  verify: {
+                    mode: 'shell',
+                    custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected suggestion output' })
+                  },
+                  hints: ['`gh copilot suggest` takes a natural language question.', 'Try: `gh copilot suggest "upload all files in a directory to S3 using aws cli"`'],
+                  xp: 30
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'n1-explain',
+          narration: "Copilot gave you the command. Before shipping AI-generated code, make sure you can explain it in code review.",
+          objective: 'Use `gh copilot explain` to understand a command copilot suggested.',
+          verify: {
+            mode: 'shell',
+            custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected explanation output' })
+          },
+          hints: ['`gh copilot explain` breaks down any command.', 'Try: `gh copilot explain "aws s3 sync . s3://my-bucket"`'],
+          xp: 25
+        },
+        {
+          id: 'n1-done',
+          narration: "You shipped Ticket #4471 by end of day. Your tech lead asks: 'How did you do that so fast?' You say: 'I had help.'",
+          objective: 'List your gh extensions one more time to confirm your setup.',
+          verify: {
+            mode: 'shell', exitCode: 0,
+            custom: r => ({ ok: r.exitCode === 0, reason: 'expected extension list' })
+          },
+          hints: ['Try: `gh extension list`'],
+          xp: 20
+        }
+      ]
     }
   ]
 };
