@@ -443,8 +443,11 @@ export default function TerminalGame() {
             resolved = true;
           } else {
             wln();
-            wln(`  ${A.red}✗ Not quite.${A.reset} ${A.dim}${result.reason || 'Try again.'}${A.reset}`);
-            wln(`  ${A.dim}Type ${A.reset}h${A.dim} for a hint  ${A.reset}s${A.dim} to skip  ${A.reset}q${A.dim} to quit${A.reset}`);
+            wln(`  ${A.red}✗ Not quite.${A.reset}`);
+            if (step.hints && step.hints.length > 0) {
+              wln(`  ${A.yellow}💡 ${step.hints[0]}${A.reset}`);
+            }
+            wln(`  ${A.dim}Type ${A.reset}h${A.dim} for more hints  ${A.reset}s${A.dim} to skip  ${A.reset}q${A.dim} to quit${A.reset}`);
             wln();
           }
         }
