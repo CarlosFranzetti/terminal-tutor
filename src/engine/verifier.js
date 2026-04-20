@@ -41,7 +41,7 @@ export function runCommand(command) {
   return runRealShell(command);
 }
 
-function evaluateShellPredicates(verify, result) {
+function evaluateShellPredicates(verify, result, command = '') {
   const reasons = [];
   if (verify.exitCode !== undefined && result.exitCode !== verify.exitCode) {
     reasons.push(`expected exit code ${verify.exitCode}, got ${result.exitCode}`);
@@ -60,7 +60,7 @@ function evaluateShellPredicates(verify, result) {
   }
   if (typeof verify.custom === 'function') {
     try {
-      const out = verify.custom(result);
+      const out = verify.custom(result, command);
       if (!out || !out.ok) {
         reasons.push(out?.reason || 'custom predicate failed');
       }
@@ -73,7 +73,7 @@ function evaluateShellPredicates(verify, result) {
 
 export async function verifyShell(verify, command) {
   const result = await runCommand(command);
-  const reasons = evaluateShellPredicates(verify, result);
+  const reasons = evaluateShellPredicates(verify, result, command);
   return {
     ok: reasons.length === 0,
     reason: reasons.join('; ') || undefined,

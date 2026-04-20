@@ -60,7 +60,7 @@ export default {
           objective: 'List the installed `gh` extensions to check for copilot.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.exitCode === 0, reason: 'expected extension list output' })
+            custom: (r, input) => ({ ok: /gh\s+extension\s+list/i.test(input) && r.exitCode === 0, reason: 'list extensions with gh extension list' })
           },
           hints: [
             'The `gh` CLI can be extended with community-built plugins. Extensions add extra commands to `gh`. `gh extension list` shows everything installed.',
@@ -84,7 +84,7 @@ export default {
                   objective: 'Print the gh copilot help output.',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: /copilot|explain|suggest|Usage|Available/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected copilot help text' })
+                    custom: (r, input) => ({ ok: /gh\s+copilot/i.test(input) && /--help/.test(input) && (/copilot|explain|suggest|Usage|Available/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'print help with gh copilot --help' })
                   },
                   hints: [
                     'Most CLI tools have built-in help text that explains their features, subcommands, and flags. Reading it first saves you time guessing.',
@@ -105,7 +105,7 @@ export default {
                   objective: 'Use `gh copilot suggest` to ask how to list files sorted by date.',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected copilot suggest output' })
+                    custom: (r, input) => ({ ok: /gh\s+copilot\s+suggest/i.test(input) && (r.exitCode === 0 || r.stdout.length > 0), reason: 'use gh copilot suggest' })
                   },
                   hints: [
                     '`gh copilot suggest` takes a plain English description of what you want to do and generates the shell command for it. You describe the goal — Copilot writes the syntax.',
@@ -124,7 +124,7 @@ export default {
           objective: 'Check GitHub CLI authentication status.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /github\.com|Logged in|not logged|status/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected auth output' })
+            custom: (r, input) => ({ ok: /gh\s+auth/i.test(input) && (/github\.com|Logged in|not logged|status/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'check auth with gh auth status' })
           },
           hints: [
             'Copilot requires GitHub authentication to function — it is a paid feature tied to your GitHub account. `gh auth status` confirms whether you are logged in.',
@@ -139,7 +139,7 @@ export default {
           objective: 'Use `gh copilot explain` to explain what `ls -la` does.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected explanation output' })
+            custom: (r, input) => ({ ok: /gh\s+copilot\s+explain/i.test(input) && (r.exitCode === 0 || r.stdout.length > 0), reason: 'use gh copilot explain' })
           },
           hints: [
             '`gh copilot explain` decodes any shell command into plain English. It breaks down each flag and argument so you understand exactly what the command does.',
@@ -164,7 +164,7 @@ export default {
           objective: 'List files in the current directory to orient yourself.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.stdout.length > 0 || r.exitCode === 0, reason: 'expected directory listing' })
+            custom: (r, input) => ({ ok: r.stdout.length > 0 || r.exitCode === 0, reason: 'list directory contents' })
           },
           hints: [
             'When debugging, start by understanding your environment. List the directory to see what files are present — log files, config files, scripts — anything that might reveal the issue.',
@@ -179,7 +179,7 @@ export default {
           objective: 'Print the `gh` version to confirm it is installed.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.exitCode === 0 || /gh version/i.test(r.stdout), reason: 'expected gh version output' })
+            custom: (r, input) => ({ ok: /gh\s+(--version|-v)/i.test(input) && (r.exitCode === 0 || /gh version/i.test(r.stdout)), reason: 'check gh version with gh --version' })
           },
           hints: [
             'Always confirm a tool is available before you need it in a critical moment. Checking the version takes one second.',
@@ -194,7 +194,7 @@ export default {
           objective: 'Check your GitHub CLI authentication status.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /github\.com|Logged in|not logged/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected auth output' })
+            custom: (r, input) => ({ ok: /gh\s+auth/i.test(input) && (/github\.com|Logged in|not logged/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'check auth with gh auth status' })
           },
           hints: [
             'Copilot requires GitHub authentication to work. Checking auth status takes 1 second — do it before you need it at 3:18am.',
@@ -218,7 +218,7 @@ export default {
                   objective: 'Use `gh copilot explain` to decode a segfault error message.',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected explanation' })
+                    custom: (r, input) => ({ ok: /gh\s+copilot\s+explain/i.test(input) && (r.exitCode === 0 || r.stdout.length > 0), reason: 'use gh copilot explain' })
                   },
                   hints: [
                     '`gh copilot explain` works on error messages too, not just commands. Paste in the error string and it will explain what it means in plain English.',
@@ -239,7 +239,7 @@ export default {
                   objective: 'Use `gh copilot explain` to decode what the deploy script does.',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected explanation' })
+                    custom: (r, input) => ({ ok: /gh\s+copilot\s+explain/i.test(input) && (r.exitCode === 0 || r.stdout.length > 0), reason: 'use gh copilot explain' })
                   },
                   hints: [
                     '`gh copilot explain` can explain any shell command — including complex deployment scripts with many flags and arguments you may not recognize.',
@@ -258,7 +258,7 @@ export default {
           objective: 'Use `gh copilot suggest` to find the right Node.js memory flag.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected suggestion output' })
+            custom: (r, input) => ({ ok: /gh\s+copilot\s+suggest/i.test(input) && (r.exitCode === 0 || r.stdout.length > 0), reason: 'use gh copilot suggest' })
           },
           hints: [
             '`gh copilot suggest` generates shell commands from natural language descriptions. You describe the goal — Copilot writes the exact syntax.',
@@ -273,7 +273,7 @@ export default {
           objective: 'Confirm your gh extension list one final time.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.exitCode === 0, reason: 'expected extension list' })
+            custom: (r, input) => ({ ok: /gh\s+extension\s+list/i.test(input) && r.exitCode === 0, reason: 'list extensions with gh extension list' })
           },
           hints: [
             'After resolving an incident, verify your tools are intact. A quick extension list confirms your setup is clean.',
@@ -298,7 +298,7 @@ export default {
           objective: 'List the current directory to see what assets exist.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.stdout.length > 0 || r.exitCode === 0, reason: 'expected directory listing' })
+            custom: (r, input) => ({ ok: r.stdout.length > 0 || r.exitCode === 0, reason: 'list directory contents' })
           },
           hints: [
             'Start every new task by understanding what you are working with. List the directory to see the files, assets, and scripts already present.',
@@ -313,7 +313,7 @@ export default {
           objective: 'Print the `gh` CLI version.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.exitCode === 0 || /gh version/i.test(r.stdout), reason: 'expected gh version output' })
+            custom: (r, input) => ({ ok: /gh\s+(--version|-v)/i.test(input) && (r.exitCode === 0 || /gh version/i.test(r.stdout)), reason: 'check gh version with gh --version' })
           },
           hints: [
             'Confirm a tool is installed before relying on it. This prevents a frustrating "command not found" error at a critical moment.',
@@ -328,7 +328,7 @@ export default {
           objective: 'List installed `gh` extensions.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.exitCode === 0, reason: 'expected extension list' })
+            custom: (r, input) => ({ ok: /gh\s+extension\s+list/i.test(input) && r.exitCode === 0, reason: 'list extensions with gh extension list' })
           },
           hints: [
             '`gh` extensions are community-built plugins that add extra commands. Copilot is one of them. List your extensions to confirm it is installed.',
@@ -343,7 +343,7 @@ export default {
           objective: 'Print the gh copilot help text.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /copilot|explain|suggest|Usage|Available/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected help text' })
+            custom: (r, input) => ({ ok: /gh\s+copilot/i.test(input) && /--help/.test(input) && (/copilot|explain|suggest|Usage|Available/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'print help with gh copilot --help' })
           },
           hints: [
             'Reading help text before using a new tool takes 10 seconds and saves you 10 minutes of guessing. It shows you exactly what is available.',
@@ -358,7 +358,7 @@ export default {
           objective: 'Confirm your GitHub CLI authentication status.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /github\.com|Logged in|not logged/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected auth status' })
+            custom: (r, input) => ({ ok: /gh\s+auth/i.test(input) && (/github\.com|Logged in|not logged/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'check auth with gh auth status' })
           },
           hints: [
             'Copilot requires GitHub authentication to work. Check your status before starting — a missing auth token at a critical moment wastes time.',
@@ -382,7 +382,7 @@ export default {
                   objective: 'Use `gh copilot suggest` to generate a video compression command.',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected suggestion output' })
+                    custom: (r, input) => ({ ok: /gh\s+copilot\s+suggest/i.test(input) && (r.exitCode === 0 || r.stdout.length > 0), reason: 'use gh copilot suggest' })
                   },
                   hints: [
                     '`gh copilot suggest` generates shell commands from natural language. You describe what you want — Copilot writes the command. You do not need to know the syntax.',
@@ -403,7 +403,7 @@ export default {
                   objective: 'Use `gh copilot suggest` to generate an AWS S3 upload command.',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected suggestion output' })
+                    custom: (r, input) => ({ ok: /gh\s+copilot\s+suggest/i.test(input) && (r.exitCode === 0 || r.stdout.length > 0), reason: 'use gh copilot suggest' })
                   },
                   hints: [
                     '`gh copilot suggest` knows CLI tools like `aws`, `ffmpeg`, `kubectl`, and hundreds more. Describe your goal in plain English.',
@@ -422,7 +422,7 @@ export default {
           objective: 'Use `gh copilot explain` to understand a command copilot suggested.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.exitCode === 0 || r.stdout.length > 0, reason: 'expected explanation output' })
+            custom: (r, input) => ({ ok: /gh\s+copilot\s+explain/i.test(input) && (r.exitCode === 0 || r.stdout.length > 0), reason: 'use gh copilot explain' })
           },
           hints: [
             'Never ship code you do not understand — even if it was AI-generated. `gh copilot explain` breaks down any command into plain English so you can defend it in code review.',
@@ -437,7 +437,7 @@ export default {
           objective: 'List your gh extensions one more time to confirm your setup.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.exitCode === 0, reason: 'expected extension list' })
+            custom: (r, input) => ({ ok: /gh\s+extension\s+list/i.test(input) && r.exitCode === 0, reason: 'list extensions with gh extension list' })
           },
           hints: [
             'Confirm your tools are in order. This is your setup now — `gh copilot` is your pair programmer.',

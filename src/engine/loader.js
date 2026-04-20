@@ -87,16 +87,27 @@ export function validatePack(pack) {
       }
     }
   } else if (pack.steps) {
-    // Legacy format — wrap into a single unnamed story for compat
+    // Legacy format — validate the steps array without mutating pack
     if (!Array.isArray(pack.steps) || pack.steps.length === 0) {
       throw new PackValidationError(id, 'steps must be a non-empty array');
     }
-    pack.stories = [{ id: 'default', title: pack.title, setting: pack.synopsis, steps: pack.steps }];
+    const seen = new Set();
+    for (const step of pack.steps) {
+      validateStep(step, id);
+      if (step.id && seen.has(step.id)) throw new PackValidationError(id, `duplicate step id: ${step.id}`);
+      if (step.id) seen.add(step.id);
+    }
   } else {
     throw new PackValidationError(id, 'pack must have stories[] or steps[]');
   }
 
   return pack;
+}
+
+// Normalize a validated pack so it always has a stories[] array.
+function normalizePack(pack) {
+  if (pack.stories) return pack;
+  return { ...pack, stories: [{ id: 'default', title: pack.title, setting: pack.synopsis, steps: pack.steps }] };
 }
 
 export async function loadPacks(dir = QUESTS_DIR) {
@@ -112,7 +123,7 @@ export async function loadPacks(dir = QUESTS_DIR) {
       console.error(err.message);
       continue;
     }
-    packs.push(pack);
+    packs.push(normalizePack(pack));
   }
   packs.sort((a, b) => a.title.localeCompare(b.title));
   return packs;

@@ -51,7 +51,7 @@ export default {
           objective: 'List the files in the current directory to survey the project.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.exitCode === 0, reason: 'expected a directory listing' })
+            custom: (r, input) => ({ ok: /^(ls|ll|la|pwd)\b/i.test(input.trim()) && r.exitCode === 0, reason: 'list directory contents with ls or check your location with pwd' })
           },
           hints: [
             'The terminal lets you list files in the current folder — like opening Finder, but faster. This is how developers orient themselves in a new project.',
@@ -66,7 +66,7 @@ export default {
           objective: 'Check the git status of the project.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /branch|modified|untracked|commit|Changes|nothing/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected git status output' })
+            custom: (r, input) => ({ ok: /git\s+status/i.test(input) && (/branch|modified|untracked|commit|Changes|nothing/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'run git status' })
           },
           hints: [
             'Git keeps a log of every saved change to your code. `git status` shows you what has changed since the last save (commit), what is staged to be saved, and what is not tracked at all.',
@@ -90,7 +90,7 @@ export default {
                   objective: 'View the git diff to see what changed in the working tree.',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: r.exitCode === 0, reason: 'expected git diff output' })
+                    custom: (r, input) => ({ ok: /git\s+diff/i.test(input) && r.exitCode === 0, reason: 'run git diff' })
                   },
                   hints: [
                     'A diff compares your current files to the last committed snapshot. It shows exactly what changed and where — additions are marked with `+`, removals with `-`.',
@@ -105,7 +105,7 @@ export default {
                   objective: 'Stage all changes for commit.',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: r.exitCode === 0, reason: 'expected git add to succeed' })
+                    custom: (r, input) => ({ ok: /git\s+add/i.test(input) && r.exitCode === 0, reason: 'stage files with git add' })
                   },
                   hints: [
                     'Staging means telling Git "include these changes in the next commit." You choose what to stage with `git add` — you can stage everything at once or pick individual files.',
@@ -126,7 +126,7 @@ export default {
                   objective: 'Stage all changes for commit.',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: r.exitCode === 0, reason: 'expected git add to succeed' })
+                    custom: (r, input) => ({ ok: /git\s+add/i.test(input) && r.exitCode === 0, reason: 'stage files with git add' })
                   },
                   hints: [
                     'Staging is how Git knows what to include in the next commit. `git add` stages files — you can add everything at once or file by file.',
@@ -145,7 +145,7 @@ export default {
           objective: 'Commit the staged changes with a descriptive message.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /commit|file|changed|main/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected a successful commit' })
+            custom: (r, input) => ({ ok: /git\s+commit/i.test(input) && (/commit|file|changed|main/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'commit with git commit -m' })
           },
           hints: [
             'A commit saves a permanent snapshot of your staged changes to Git\'s history. Every commit needs a message that explains what changed and why — future developers (including you) will read it.',
@@ -160,7 +160,7 @@ export default {
           objective: 'Confirm the `gh` CLI is installed and print its version.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.exitCode === 0 || /gh version/i.test(r.stdout), reason: 'expected gh version output' })
+            custom: (r, input) => ({ ok: /gh\s+(--version|-v)/i.test(input) && (r.exitCode === 0 || /gh version/i.test(r.stdout)), reason: 'check gh version with gh --version' })
           },
           hints: [
             'CLI tools (command-line interfaces) are programs you run by typing their name in the terminal. Before using one, confirm it is installed by asking it to identify itself.',
@@ -175,7 +175,7 @@ export default {
           objective: 'Check your GitHub authentication status.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /github\.com|Logged in|not logged/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected auth status output' })
+            custom: (r, input) => ({ ok: /gh\s+auth/i.test(input) && (/github\.com|Logged in|not logged/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'check auth with gh auth status' })
           },
           hints: [
             'Authentication links the `gh` tool to your GitHub account. Without it, `gh` cannot create repositories, open PRs, or do anything that requires your identity. Think of it as logging in.',
@@ -190,7 +190,7 @@ export default {
           objective: 'Create a new public GitHub repo named "street-racer-unlimited".',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /Created|github\.com|repository|street-racer/i.test(r.stdout) || r.exitCode === 0, reason: 'expected repo creation output' })
+            custom: (r, input) => ({ ok: /gh\s+repo\s+create/i.test(input) && (/Created|github\.com|repository|street-racer/i.test(r.stdout) || r.exitCode === 0), reason: 'create repo with gh repo create' })
           },
           hints: [
             'A repository on GitHub is a remote copy of your project that others can access, clone, and contribute to. `gh repo create` creates one under your account without needing a browser.',
@@ -205,7 +205,7 @@ export default {
           objective: 'Confirm the push succeeded by viewing the remote repo.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /street-racer|github\.com|Description|public/i.test(r.stdout) || r.exitCode === 0, reason: 'expected repo view output' })
+            custom: (r, input) => ({ ok: /gh\s+repo\s+view/i.test(input) && (/street-racer|github\.com|Description|public/i.test(r.stdout) || r.exitCode === 0), reason: 'view the repo with gh repo view' })
           },
           hints: [
             'After pushing, you can verify your repository is live by viewing it from the terminal. This shows the repo name, description, visibility, and URL.',
@@ -230,7 +230,7 @@ export default {
           objective: 'Print your current directory and list its contents.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.stdout.length > 0 || r.exitCode === 0, reason: 'expected some output' })
+            custom: (r, input) => ({ ok: /^(ls|ll|la|pwd)\b/i.test(input.trim()) && (r.stdout.length > 0 || r.exitCode === 0), reason: 'list files with ls or print your location with pwd' })
           },
           hints: [
             'Your terminal always has a "current location" — a folder you are working inside. `pwd` (print working directory) shows you the full path to that folder. `ls` shows what files are in it.',
@@ -245,7 +245,7 @@ export default {
           objective: 'Check the git status of the project.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /branch|modified|untracked|commit|Changes/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected git status output' })
+            custom: (r, input) => ({ ok: /git\s+status/i.test(input) && (/branch|modified|untracked|commit|Changes/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'run git status' })
           },
           hints: [
             'Git must be initialized in a folder before it can track files. `git status` shows the current state — staged files, modified files, and untracked files. It also confirms whether git is set up at all.',
@@ -260,7 +260,7 @@ export default {
           objective: 'Stage all project files for commit.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: r.exitCode === 0, reason: 'expected git add to succeed' })
+            custom: (r, input) => ({ ok: /git\s+add/i.test(input) && r.exitCode === 0, reason: 'stage files with git add' })
           },
           hints: [
             'Staging is how Git knows what to include in the next commit. You pick what goes in — then `git commit` seals it. `git add` is the staging command.',
@@ -275,7 +275,7 @@ export default {
           objective: 'Commit the staged files with a message.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /commit|file|changed/i.test(r.stdout) || r.exitCode === 0, reason: 'expected commit success' })
+            custom: (r, input) => ({ ok: /git\s+commit/i.test(input) && (/commit|file|changed/i.test(r.stdout) || r.exitCode === 0), reason: 'commit with git commit -m' })
           },
           hints: [
             'A commit saves your staged changes permanently to Git\'s history with a message explaining what they contain. The message is public — judges (and collaborators) will read it.',
@@ -290,7 +290,7 @@ export default {
           objective: 'Check GitHub CLI authentication status.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /github\.com|Logged in|not logged/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected auth status output' })
+            custom: (r, input) => ({ ok: /gh\s+auth/i.test(input) && (/github\.com|Logged in|not logged/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'check auth with gh auth status' })
           },
           hints: [
             'Authentication connects `gh` to your GitHub account. Without it, `gh` cannot create repositories or push code on your behalf. Check your status now, not at 2:58am.',
@@ -314,7 +314,7 @@ export default {
                   objective: 'Create a new public GitHub repo named "neon-heist".',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: /Created|github\.com|neon-heist|repository/i.test(r.stdout) || r.exitCode === 0, reason: 'expected repo creation output' })
+                    custom: (r, input) => ({ ok: /gh\s+repo\s+create/i.test(input) && (/Created|github\.com|neon-heist|repository/i.test(r.stdout) || r.exitCode === 0), reason: 'create repo with gh repo create' })
                   },
                   hints: [
                     'A GitHub repository is a remote home for your code on GitHub\'s servers. `gh repo create` creates one under your account without needing a browser.',
@@ -329,7 +329,7 @@ export default {
                   objective: 'Push the commit to the remote GitHub repo.',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: /Writing|objects|done|->|branch|main/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected push output' })
+                    custom: (r, input) => ({ ok: /git\s+push/i.test(input) && (/Writing|objects|done|->|branch|main/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'push with git push' })
                   },
                   hints: [
                     'Pushing uploads your local commits to the remote repository on GitHub. Without this step, your code only exists on your machine.',
@@ -350,7 +350,7 @@ export default {
                   objective: 'Create the GitHub repo and push all commits in one command.',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: /Created|github\.com|Writing|objects|neon-heist/i.test(r.stdout) || r.exitCode === 0, reason: 'expected create+push output' })
+                    custom: (r, input) => ({ ok: /gh\s+repo\s+create/i.test(input) && (/Created|github\.com|Writing|objects|neon-heist/i.test(r.stdout) || r.exitCode === 0), reason: 'create and push with gh repo create' })
                   },
                   hints: [
                     '`gh repo create` can do two things at once: create the remote repo AND push your local commits. This saves a step when you are in a hurry.',
@@ -369,7 +369,7 @@ export default {
           objective: 'View the remote repo to confirm everything is live.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /neon-heist|github\.com|Description|star|fork/i.test(r.stdout) || r.exitCode === 0, reason: 'expected repo view output' })
+            custom: (r, input) => ({ ok: /gh\s+repo\s+view/i.test(input) && (/neon-heist|github\.com|Description|star|fork/i.test(r.stdout) || r.exitCode === 0), reason: 'view repo with gh repo view' })
           },
           hints: [
             'After pushing, you can verify your repository is live without opening a browser. `gh repo view` shows the repo\'s name, description, URL, and visibility.',
@@ -394,7 +394,7 @@ export default {
           objective: 'View the upstream OpCity repo on GitHub to understand what you\'re working with.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /opcity|github\.com|Description|star|fork|language/i.test(r.stdout) || r.exitCode === 0, reason: 'expected repo info' })
+            custom: (r, input) => ({ ok: /gh\s+repo\s+view/i.test(input) && (/opcity|github\.com|Description|star|fork|language/i.test(r.stdout) || r.exitCode === 0), reason: 'view the upstream repo with gh repo view' })
           },
           hints: [
             'Before forking, look at the source repo to understand what you are working with. `gh repo view` shows any public repository\'s metadata — stars, description, language, URL.',
@@ -409,7 +409,7 @@ export default {
           objective: 'Check your GitHub authentication status.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /github\.com|Logged in|not logged/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected auth output' })
+            custom: (r, input) => ({ ok: /gh\s+auth/i.test(input) && (/github\.com|Logged in|not logged/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'check auth with gh auth status' })
           },
           hints: [
             'Forking requires your GitHub identity — the fork will be created under your account. `gh auth status` confirms you are logged in before you proceed.',
@@ -424,7 +424,7 @@ export default {
           objective: 'Fork the opengame/opcity repository to your account.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /fork|Created|opcity|github\.com/i.test(r.stdout) || r.exitCode === 0, reason: 'expected fork output' })
+            custom: (r, input) => ({ ok: /gh\s+repo\s+fork/i.test(input) && (/fork|Created|opcity|github\.com/i.test(r.stdout) || r.exitCode === 0), reason: 'fork the repo with gh repo fork' })
           },
           hints: [
             'A fork is your own copy of someone else\'s GitHub repository, stored under your account. It lets you make changes without touching the original — then propose those changes back via a pull request.',
@@ -439,7 +439,7 @@ export default {
           objective: 'Clone your fork of OpCity to your local machine.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /Cloning|done|objects|opcity/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected clone output' })
+            custom: (r, input) => ({ ok: /git\s+clone/i.test(input) && (/Cloning|done|objects|opcity/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'clone with git clone' })
           },
           hints: [
             'Cloning downloads a GitHub repository to your local machine. You need a local copy to actually edit code — your fork on GitHub is just a remote copy.',
@@ -463,7 +463,7 @@ export default {
                   objective: 'Create and switch to a branch named "fix/physics-broadphase-optimization".',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: r.exitCode === 0, reason: 'expected branch creation and switch' })
+                    custom: (r, input) => ({ ok: /git\s+(checkout\s+-b|switch\s+-c)/i.test(input) && r.exitCode === 0, reason: 'create a branch with git checkout -b' })
                   },
                   hints: [
                     'A branch is an isolated copy of the codebase where you can make changes freely. Other developers work on their own branches simultaneously — nobody steps on each other\'s work.',
@@ -484,7 +484,7 @@ export default {
                   objective: 'Create and switch to a branch named "perf/40pct-physics-speedup".',
                   verify: {
                     mode: 'shell',
-                    custom: r => ({ ok: r.exitCode === 0, reason: 'expected branch creation and switch' })
+                    custom: (r, input) => ({ ok: /git\s+(checkout\s+-b|switch\s+-c)/i.test(input) && r.exitCode === 0, reason: 'create a branch with git checkout -b' })
                   },
                   hints: [
                     'A branch isolates your work from the main codebase. The name is visible in pull requests and git history — make it descriptive so reviewers know what to expect.',
@@ -503,7 +503,7 @@ export default {
           objective: 'Push your local branch to your forked remote.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /objects|done|branch|->|Writing/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected push output' })
+            custom: (r, input) => ({ ok: /git\s+push/i.test(input) && (/objects|done|branch|->|Writing/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'push the branch with git push' })
           },
           hints: [
             'Pushing a branch uploads it from your local machine to GitHub. Without this step, your branch and commits only exist locally — the maintainer cannot see them.',
@@ -518,7 +518,7 @@ export default {
           objective: 'Open a pull request against the upstream opengame/opcity repo.',
           verify: {
             mode: 'shell',
-            custom: r => ({ ok: /pull request|PR|Created|github\.com|request/i.test(r.stdout) || r.exitCode === 0, reason: 'expected PR creation output' })
+            custom: (r, input) => ({ ok: /gh\s+pr\s+create/i.test(input) && (/pull request|PR|Created|github\.com|request/i.test(r.stdout) || r.exitCode === 0), reason: 'open a PR with gh pr create' })
           },
           hints: [
             'A pull request proposes your branch\'s changes for inclusion in another repository. The maintainer reviews your code and decides whether to merge it. It is the standard way to contribute to open source projects.',

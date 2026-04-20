@@ -10,7 +10,7 @@ export type VerifySpec = {
   stdoutContains?: string;
   stdoutMatches?: string;
   stderrContains?: string;
-  custom?: (result: ShellResult) => { ok: boolean; reason?: string };
+  custom?: (result: ShellResult, input: string) => { ok: boolean; reason?: string };
   // which mode
   binary?: string;
   // prompt mode

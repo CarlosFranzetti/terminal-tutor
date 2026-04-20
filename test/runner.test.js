@@ -13,11 +13,9 @@ before(() => {
   process.env.TT_NO_TYPEWRITER = '1';
 });
 
-const minimalPack = {
-  id: 'miniq',
+const minimalStory = {
+  id: 'default',
   title: 'Mini Quest',
-  synopsis: 'smoke test',
-  tool: 'echo',
   steps: [
     {
       id: 's1',
@@ -38,6 +36,14 @@ const minimalPack = {
   ]
 };
 
+const minimalPack = {
+  id: 'miniq',
+  title: 'Mini Quest',
+  synopsis: 'smoke test',
+  tool: 'echo',
+  stories: [minimalStory]
+};
+
 function scriptedUi(actions) {
   let i = 0;
   const events = [];
@@ -54,7 +60,8 @@ function scriptedUi(actions) {
     renderSuccess: (step, xp) => events.push(['success', step.id, xp]),
     renderFailure: (step, reason) => events.push(['failure', step.id, reason]),
     renderHint: (text, index) => events.push(['hint', text, index]),
-    renderQuestComplete: (pack) => events.push(['quest-complete', pack.id])
+    renderQuestComplete: (pack) => events.push(['quest-complete', pack.id]),
+    pickBranch: (bp) => Promise.resolve(bp.branches[0])
   };
 }
 
@@ -64,7 +71,7 @@ test('runner advances through steps on successful commands', async () => {
     { kind: 'run', command: 'echo hello' },
     { kind: 'run', command: 'echo world' }
   ]);
-  const result = await runQuest(minimalPack, ui);
+  const result = await runQuest(minimalPack, minimalStory, ui);
   assert.deepEqual(result, { completed: true });
   const kinds = ui.events.map((e) => e[0]);
   assert.deepEqual(kinds, [
@@ -84,7 +91,7 @@ test('runner surfaces failures and accepts hints then success', async () => {
     { kind: 'run', command: 'echo hello now' },
     { kind: 'run', command: 'echo world-too' }
   ]);
-  const result = await runQuest(minimalPack, ui);
+  const result = await runQuest(minimalPack, minimalStory, ui);
   assert.equal(result.completed, true);
   const failureCount = ui.events.filter((e) => e[0] === 'failure').length;
   const hintCount = ui.events.filter((e) => e[0] === 'hint').length;
@@ -98,6 +105,6 @@ test('runner returns {quit:true} on quit action', async () => {
   const ui = scriptedUi([
     { kind: 'quit' }
   ]);
-  const result = await runQuest(minimalPack, ui);
+  const result = await runQuest(minimalPack, minimalStory, ui);
   assert.deepEqual(result, { quit: true });
 });

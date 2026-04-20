@@ -53,7 +53,7 @@ const pack: Pack = {
           objective: "List the files in the project to see what you're dealing with.",
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: r.exitCode === 0, reason: 'expected a directory listing' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /^(ls|ll|la|pwd)\b/i.test(input.trim()) && r.exitCode === 0, reason: 'list directory contents with ls or check location with pwd' }),
           },
           hints: [
             'The terminal lets you list files in the current folder — like opening Finder, but faster. This is how developers orient themselves in a new project.',
@@ -83,7 +83,7 @@ const pack: Pack = {
           objective: 'Check the git status of the project.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /branch|modified|untracked|commit|Changes|nothing/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected git status output' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /git\s+status/i.test(input) && (/branch|modified|untracked|commit|Changes|nothing/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'run git status' }),
           },
           hints: [
             'Git keeps a log of every saved change to your code. `git status` shows you what has changed since the last save (commit), what is staged to be saved, and what is not tracked at all.',
@@ -108,7 +108,7 @@ const pack: Pack = {
                   objective: 'View the git diff to see what changed.',
                   verify: {
                     mode: 'shell',
-                    custom: (r: ShellResult) => ({ ok: r.exitCode === 0, reason: 'expected git diff output' }),
+                    custom: (r: ShellResult, input: string) => ({ ok: /git\s+diff/i.test(input) && r.exitCode === 0, reason: 'run git diff' }),
                   },
                   hints: [
                     'A diff compares your current files to the last committed snapshot. It shows exactly what changed and where — additions are marked with `+`, removals with `-`.',
@@ -121,7 +121,10 @@ const pack: Pack = {
                   id: 's1-b1-add',
                   narration: "Staging is Git's preparation step — you choose which changes to include in the next snapshot before sealing it with a commit. `git add` picks what goes in, then `git commit` seals it.",
                   objective: 'Stage all changes for commit.',
-                  verify: { mode: 'shell', exitCode: 0, custom: (r: ShellResult) => ({ ok: r.exitCode === 0, reason: 'expected git add to succeed' }) },
+                  verify: {
+                    mode: 'shell',
+                    custom: (r: ShellResult, input: string) => ({ ok: /git\s+add/i.test(input) && r.exitCode === 0, reason: 'stage files with git add' }),
+                  },
                   hints: [
                     'Staging means telling Git "include these changes in the next commit." You choose what to stage with `git add` — everything at once or file by file.',
                     '`git add .` stages all changes in the current directory. `-A` also works and catches deletions.',
@@ -139,7 +142,10 @@ const pack: Pack = {
                   id: 's1-b2-add',
                   narration: "Bold. Staging tells Git which changes to include in the next commit. When you trust the team's work, stage everything in one shot and keep moving.",
                   objective: 'Stage all changes for commit.',
-                  verify: { mode: 'shell', exitCode: 0, custom: (r: ShellResult) => ({ ok: r.exitCode === 0, reason: 'expected git add to succeed' }) },
+                  verify: {
+                    mode: 'shell',
+                    custom: (r: ShellResult, input: string) => ({ ok: /git\s+add/i.test(input) && r.exitCode === 0, reason: 'stage files with git add' }),
+                  },
                   hints: [
                     'Staging is how Git knows what to include in the next commit. `git add` stages files — you can add everything at once or file by file.',
                     '`git add .` stages all changes in the current directory. `-A` also works.',
@@ -158,7 +164,7 @@ const pack: Pack = {
           objective: 'Commit the staged changes with a meaningful message.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /main|commit|file|changed/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected a successful commit' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /git\s+commit/i.test(input) && (/main|commit|file|changed/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'commit with git commit -m' }),
           },
           hints: [
             'A commit saves a permanent snapshot of your staged changes to Git\'s history with a message explaining what they contain. Future developers (including you) will read it.',
@@ -174,7 +180,7 @@ const pack: Pack = {
           objective: 'Confirm the `gh` CLI is installed and print its version.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: r.exitCode === 0 || /gh version/i.test(r.stdout), reason: 'expected gh version output' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /gh\s+(--version|-v)/i.test(input) && (r.exitCode === 0 || /gh version/i.test(r.stdout)), reason: 'check gh version with gh --version' }),
           },
           hints: [
             'CLI tools are programs you run by typing their name in the terminal. Before using one, confirm it is installed by asking it to identify itself.',
@@ -190,7 +196,7 @@ const pack: Pack = {
           objective: 'Check your GitHub authentication status.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /github\.com|Logged in|carlosfranzetti|oauth/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected auth status output' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /gh\s+auth/i.test(input) && (/github\.com|Logged in|carlosfranzetti|oauth/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'check auth with gh auth status' }),
           },
           hints: [
             'Authentication links the `gh` tool to your GitHub account. Without it, `gh` cannot create repositories or do anything that requires your identity. Think of it as logging in.',
@@ -206,7 +212,7 @@ const pack: Pack = {
           objective: 'Create a public GitHub repo for the game.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /Created|github\.com|street-racer|repository/i.test(r.stdout) || r.exitCode === 0, reason: 'expected repo creation output' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /gh\s+repo\s+create/i.test(input) && (/Created|github\.com|street-racer|repository/i.test(r.stdout) || r.exitCode === 0), reason: 'create a repo with gh repo create' }),
           },
           hints: [
             'A repository on GitHub is a remote copy of your project that others can access, clone, and contribute to. `gh repo create` creates one under your account without needing a browser.',
@@ -222,7 +228,7 @@ const pack: Pack = {
           objective: 'Push the code to GitHub.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /main|Writing objects|done|->|branch/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected push output' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /git\s+push/i.test(input) && (/main|Writing objects|done|->|branch/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'push with git push' }),
           },
           hints: [
             'Pushing uploads your local commits to the remote repository on GitHub. Without this step, your code only exists locally.',
@@ -238,7 +244,7 @@ const pack: Pack = {
           objective: 'View the live repo to confirm it shipped.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /street-racer|carlosfranzetti|github/i.test(r.stdout) || r.exitCode === 0, reason: 'expected repo view output' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /gh\s+repo\s+view/i.test(input) && (/street-racer|carlosfranzetti|github/i.test(r.stdout) || r.exitCode === 0), reason: 'view the repo with gh repo view' }),
           },
           hints: [
             'After pushing, verify your repository is live without opening a browser. `gh repo view` shows name, description, URL, and visibility.',
@@ -290,7 +296,7 @@ const pack: Pack = {
           objective: 'Find out where you are and what files are here.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: r.stdout.length > 1 || r.exitCode === 0, reason: 'expected some output' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /^(ls|ll|la|pwd)\b/i.test(input.trim()) && (r.stdout.length > 1 || r.exitCode === 0), reason: 'list files with ls or print location with pwd' }),
           },
           hints: [
             'Your terminal always has a current location — a folder you are working inside. `pwd` shows you the full path to that folder. `ls` shows what files are in it.',
@@ -306,7 +312,7 @@ const pack: Pack = {
           objective: 'Check git status.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /branch|modified|untracked|commit|Changes/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected git status output' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /git\s+status/i.test(input) && (/branch|modified|untracked|commit|Changes/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'run git status' }),
           },
           hints: [
             'Git must be initialized in a folder before it can track files. `git status` confirms whether git is set up and shows what has changed.',
@@ -320,7 +326,10 @@ const pack: Pack = {
           narration:
             "2:49am. Modified files and the final boss audio untracked. Eleven minutes. Staging tells Git which changes to include in your commit. Stage everything — no time to be selective.",
           objective: 'Stage all changes.',
-          verify: { mode: 'shell', exitCode: 0, custom: (r: ShellResult) => ({ ok: r.exitCode === 0, reason: 'expected git add to succeed' }) },
+          verify: {
+            mode: 'shell',
+            custom: (r: ShellResult, input: string) => ({ ok: /git\s+add/i.test(input) && r.exitCode === 0, reason: 'stage files with git add' }),
+          },
           hints: [
             'Staging is how Git knows what to include in the next commit. `git add` is the staging command — you pick what goes in before sealing it with a commit.',
             '`git add .` stages everything in the current directory. `-A` also works and catches deletions.',
@@ -335,7 +344,7 @@ const pack: Pack = {
           objective: 'Commit with a message that represents the game well.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /commit|main|file/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected commit success' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /git\s+commit/i.test(input) && (/commit|main|file/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'commit with git commit -m' }),
           },
           hints: [
             'A commit saves your staged changes permanently with a message explaining what they contain. The message is public — judges (and collaborators) will read it.',
@@ -351,7 +360,7 @@ const pack: Pack = {
           objective: 'Check your GitHub auth status.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /github\.com|Logged in|carlosfranzetti/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected auth status' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /gh\s+auth/i.test(input) && (/github\.com|Logged in|carlosfranzetti/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'check auth with gh auth status' }),
           },
           hints: [
             'Authentication connects `gh` to your GitHub account. Without it, `gh` cannot create repos or push. Check now before you hit a wall at 2:58am.',
@@ -367,7 +376,7 @@ const pack: Pack = {
           objective: 'Create a public GitHub repo called `neon-heist`.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /Created|github\.com|neon-heist|repository/i.test(r.stdout) || r.exitCode === 0, reason: 'expected repo creation' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /gh\s+repo\s+create/i.test(input) && (/Created|github\.com|neon-heist|repository/i.test(r.stdout) || r.exitCode === 0), reason: 'create a repo with gh repo create' }),
           },
           hints: [
             'A GitHub repository is a remote home for your code. `gh repo create` creates one under your account. Game jam submissions must be public so judges can access them.',
@@ -383,7 +392,7 @@ const pack: Pack = {
           objective: 'Push to GitHub.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /main|objects|done|branch/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected push output' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /git\s+push/i.test(input) && (/main|objects|done|branch/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'push with git push' }),
           },
           hints: [
             'Pushing uploads your local commits to the remote repository on GitHub. Without this step, your code only exists locally and the judges cannot see it.',
@@ -408,7 +417,7 @@ const pack: Pack = {
                   objective: "View the repo to confirm it's live.",
                   verify: {
                     mode: 'shell',
-                    custom: (r: ShellResult) => ({ ok: /neon-heist|github|public/i.test(r.stdout) || r.exitCode === 0, reason: 'expected repo view' }),
+                    custom: (r: ShellResult, input: string) => ({ ok: /gh\s+repo\s+view/i.test(input) && (/neon-heist|github|public/i.test(r.stdout) || r.exitCode === 0), reason: 'view the repo with gh repo view' }),
                   },
                   hints: [
                     'After pushing, verify your repository is live. `gh repo view` shows repo details right in your terminal.',
@@ -478,7 +487,7 @@ const pack: Pack = {
           objective: "View the upstream repo to understand what you're forking.",
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /opcity|github|opengame|public|description/i.test(r.stdout) || r.exitCode === 0, reason: 'expected repo info' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /gh\s+repo\s+view/i.test(input) && (/opcity|github|opengame|public|description/i.test(r.stdout) || r.exitCode === 0), reason: 'view the upstream repo with gh repo view' }),
           },
           hints: [
             'Before forking, inspect the source repo. `gh repo view` shows any public repository\'s metadata — stars, description, language, and URL.',
@@ -494,7 +503,7 @@ const pack: Pack = {
           objective: 'Check your GitHub auth status.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /github\.com|carlosfranzetti|Logged in/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected auth output' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /gh\s+auth/i.test(input) && (/github\.com|carlosfranzetti|Logged in/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'check auth with gh auth status' }),
           },
           hints: [
             'Forking requires your GitHub identity — the fork will be created under your account. `gh auth status` confirms you are logged in.',
@@ -510,7 +519,7 @@ const pack: Pack = {
           objective: 'Fork the `opengame/opcity` repository.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /fork|Created|carlosfranzetti|opcity|github/i.test(r.stdout) || r.exitCode === 0, reason: 'expected fork output' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /gh\s+repo\s+fork/i.test(input) && (/fork|Created|carlosfranzetti|opcity|github/i.test(r.stdout) || r.exitCode === 0), reason: 'fork with gh repo fork' }),
           },
           hints: [
             'A fork is your own copy of someone else\'s GitHub repository, stored under your account. It lets you make changes without touching the original — then propose those changes back via a pull request.',
@@ -526,7 +535,7 @@ const pack: Pack = {
           objective: 'Clone your fork to work on it locally.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /Cloning|done|objects|opcity/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected clone output' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /git\s+clone/i.test(input) && (/Cloning|done|objects|opcity/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'clone with git clone' }),
           },
           hints: [
             'Cloning downloads a GitHub repository to your local machine. You need a local copy to edit code — your fork on GitHub is just the remote copy.',
@@ -542,7 +551,7 @@ const pack: Pack = {
           objective: 'List the files in the `src/` directory.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /physics|engine|game|player|src|\.js/i.test(r.stdout) || r.stdout.length > 2 || r.exitCode === 0, reason: 'expected a file listing' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /^ls\b/i.test(input.trim()) && (/physics|engine|game|player|src|\.js/i.test(r.stdout) || r.stdout.length > 2 || r.exitCode === 0), reason: 'list the src directory with ls' }),
           },
           hints: [
             '`ls` lists directory contents. You can pass a directory name to list that specific folder rather than your current location.',
@@ -558,7 +567,7 @@ const pack: Pack = {
           objective: 'Read the physics engine file.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: r.exitCode === 0, reason: 'expected file contents' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /^cat\b/i.test(input.trim()) && r.exitCode === 0, reason: 'read the file with cat' }),
           },
           hints: [
             '`cat` prints a file\'s contents to the terminal. Use it to read any text file without opening an editor.',
@@ -583,7 +592,7 @@ const pack: Pack = {
                   objective: 'Create a new branch called `fix/static-collision-skip`.',
                   verify: {
                     mode: 'shell',
-                    custom: (r: ShellResult) => ({ ok: r.exitCode === 0, reason: 'expected branch creation' }),
+                    custom: (r: ShellResult, input: string) => ({ ok: /git\s+(checkout\s+-b|switch\s+-c)/i.test(input) && r.exitCode === 0, reason: 'create a branch with git checkout -b' }),
                   },
                   hints: [
                     'A branch is an independent line of development where you can make changes freely without affecting the main branch. Creating one is the first step before any code change.',
@@ -604,7 +613,7 @@ const pack: Pack = {
                   objective: 'Create a branch called `perf/skip-static-collision`.',
                   verify: {
                     mode: 'shell',
-                    custom: (r: ShellResult) => ({ ok: r.exitCode === 0, reason: 'expected branch creation' }),
+                    custom: (r: ShellResult, input: string) => ({ ok: /git\s+(checkout\s+-b|switch\s+-c)/i.test(input) && r.exitCode === 0, reason: 'create a branch with git checkout -b' }),
                   },
                   hints: [
                     'A branch is an independent workspace for your change. The `perf/` prefix is a convention that signals this is a performance improvement.',
@@ -624,7 +633,7 @@ const pack: Pack = {
           objective: 'Stage and commit the physics fix.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /commit|main|file|changed/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected a commit' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /git\s+(add|commit)/i.test(input) && (/commit|main|file|changed/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'stage and commit with git add and git commit' }),
           },
           hints: [
             'Stage your changes with `git add .`, then commit with `git commit -m` and a message describing the fix. You can chain them with `&&`.',
@@ -640,7 +649,7 @@ const pack: Pack = {
           objective: 'Push your branch to your fork on GitHub.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /objects|done|branch|main|->|perf|fix/i.test(r.stdout + r.stderr) || r.exitCode === 0, reason: 'expected push output' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /git\s+push/i.test(input) && (/objects|done|branch|main|->|perf|fix/i.test(r.stdout + r.stderr) || r.exitCode === 0), reason: 'push the branch with git push' }),
           },
           hints: [
             'Pushing a branch uploads it from your local machine to GitHub. Without this, your branch and commits only exist locally — the maintainer cannot see them.',
@@ -656,7 +665,7 @@ const pack: Pack = {
           objective: 'Open a pull request to the upstream repo.',
           verify: {
             mode: 'shell',
-            custom: (r: ShellResult) => ({ ok: /pull|PR|Created|github\.com|request/i.test(r.stdout) || r.exitCode === 0, reason: 'expected PR creation' }),
+            custom: (r: ShellResult, input: string) => ({ ok: /gh\s+pr\s+create/i.test(input) && (/pull|PR|Created|github\.com|request/i.test(r.stdout) || r.exitCode === 0), reason: 'open a PR with gh pr create' }),
           },
           hints: [
             'A pull request proposes your branch\'s changes for inclusion in another repository. The maintainer reviews your code and decides whether to merge it. This is the standard way to contribute to open source.',

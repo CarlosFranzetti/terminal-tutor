@@ -16,10 +16,10 @@ export function verifyStep(spec: VerifySpec, input: string): VerifyResult {
 
   // shell mode: simulate the command, then evaluate predicates
   const result = runCommand(input);
-  return evaluatePredicates(spec, result);
+  return evaluatePredicates(spec, result, input);
 }
 
-export function evaluatePredicates(spec: VerifySpec, result: ShellResult): VerifyResult {
+export function evaluatePredicates(spec: VerifySpec, result: ShellResult, input = ''): VerifyResult {
   const reasons: string[] = [];
 
   if (spec.exitCode !== undefined && result.exitCode !== spec.exitCode) {
@@ -39,7 +39,7 @@ export function evaluatePredicates(spec: VerifySpec, result: ShellResult): Verif
   }
   if (typeof spec.custom === 'function') {
     try {
-      const out = spec.custom(result);
+      const out = spec.custom(result, input);
       if (!out || !out.ok) {
         reasons.push(out?.reason || 'custom check failed');
       }
