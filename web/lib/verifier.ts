@@ -10,8 +10,11 @@ export function verifyStep(spec: VerifySpec, input: string): VerifyResult {
   }
 
   if (spec.mode === 'prompt') {
-    const ok = input === spec.answer;
-    return { ok, reason: ok ? undefined : 'not quite — think again' };
+    // Support both single `answer` and multi-value `answers` array.
+    const valid = Array.isArray(spec.answers)
+      ? spec.answers.includes(input)
+      : input === spec.answer;
+    return { ok: valid, reason: valid ? undefined : 'not quite — think again' };
   }
 
   // shell mode: simulate the command, then evaluate predicates

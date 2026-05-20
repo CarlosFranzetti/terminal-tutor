@@ -96,6 +96,9 @@ export function verifyWhich(verify) {
 }
 
 export function verifyPrompt(verify, userAnswer) {
-  const ok = userAnswer === verify.answer;
-  return { ok, reason: ok ? undefined : 'not quite — think again' };
+  // Support both single `answer` and multi-value `answers` array.
+  const valid = Array.isArray(verify.answers)
+    ? verify.answers.includes(userAnswer)
+    : userAnswer === verify.answer;
+  return { ok: valid, reason: valid ? undefined : 'not quite — think again' };
 }

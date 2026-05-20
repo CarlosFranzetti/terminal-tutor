@@ -1,114 +1,327 @@
 # Terminal Tutor — Technical Design Document (TDD)
 
-**Owner:** Carlos Franzetti
-**Date:** April 16, 2026
-**Status:** MVP design
-**Source PRD:** `Terminal_Tutor_MiniPRD.md`
+**Owner:** Carlos Franzetti  
+**Date:** April 16, 2026 (updated May 2026)  
+**Status:** MVP — shipped  
+**Source PRD:** `PRD.md`
+
+---
 
 ## 1. Context and goals
 
-Terminal Tutor is a gamified, story-driven CLI trainer that runs in the user's real shell. The MVP must deliver a launchable terminal application with a colorful, animated UI that lets a learner pick a quest pack, play through story-driven steps that verify real commands, request progressive hints, track XP, and resume a quest. The MVP ships two quest packs: GitHub CLI and GitHub Copilot CLI. The engine must be modular so new packs drop in as data, not code.
+Terminal Tutor is a gamified, story-driven CLI trainer that runs in the user's real shell (and in the browser as a Next.js web app). The MVP delivers a launchable terminal application with a colorful, animated UI that lets a learner pick a quest pack, choose a story, play through story-driven steps that verify real commands, request progressive hints, track XP, and resume a quest. The MVP ships one quest pack (GitHub Copilot CLI, three stories with branching paths). The engine is modular so new packs drop in as data files — no engine changes required.
 
-The design goals, in priority order, are: (1) zero-friction first-run experience, (2) a safe, reliable command verification loop, (3) an architecture where a new quest pack is a single self-contained file, (4) a delightful visual experience that earns the "gamified" claim, and (5) a codebase small enough to extend in an afternoon.
+Design goals, in priority order:
+1. Zero-friction first-run experience
+2. A safe, reliable command-verification loop
+3. An architecture where a new quest pack is a single self-contained file
+4. A delightful visual experience that earns the "gamified" claim
+5. A codebase small enough to extend in an afternoon
+
+---
 
 ## 2. High-level architecture
 
-Terminal Tutor is a Node.js CLI packaged as `terminal-tutor` (short alias `tt`). It uses Node 18+ and ships no native dependencies. The code is organized into four layers.
+Terminal Tutor is a Node.js CLI (`tt`). It uses Node 18+ and has no native dependencies. Four layers:
 
-The **entry layer** (`bin/tt.js`) parses arguments, sets up the process, and dispatches to the app shell. The **app shell** (`src/app.js`) owns the top-level screens: splash, quest browser, quest player, and progress/profile views. The **engine** (`src/engine/`) is headless: it loads quest packs, runs a quest state machine, executes verification, manages hints, and reads/writes the progress store. The **UI kit** (`src/ui/`) owns all presentation: gradients, animated titles, progress bars, boxed panels, spinners, typewriter text, and keybindings. Quest packs live under `quests/` as plain JavaScript modules that export a declarative quest object.
+| Layer | Entry point | Responsibility |
+|---|---|---|
+| Entry | `bin/tt.js` | Arg parsing, process setup, dispatch to app |
+| App shell | `src/app.js` | Top-level screens: splash → browser → story picker → player |
+| Engine | `src/engine/` | Headless: loads packs, runs state machine, verifies, manages hints, persists progress |
+| UI kit | `src/ui/` | All presentation: gradients, animations, panels, spinners, prompts |
 
-The user boots the app, the app shell asks the engine for the pack catalog, renders a quest browser, and on selection hands control to the quest player. The player loops through steps: narrate, prompt, spawn a shell for verification, evaluate, branch on success or failure, and persist progress after every step.
+Quest packs live under `quests/` as plain JavaScript modules that default-export a declarative quest object.
+
+### Flow
+
+```
+boot → load progress + packs → splash → quest browser
+     → story picker → player loop (narrate → prompt → verify → resolve) → persist
+```
+
+---
 
 ## 3. Component design
 
 ### 3.1 Quest pack format
 
-A quest pack is a single file under `quests/` that default-exports an object with five fields: `id`, `title`, `synopsis`, `tool` (the real CLI this pack teaches, e.g. `gh`), and `steps`. Each step declares `id`, `narration` (story text shown before the prompt), `objective` (plain-English goal), `command` (optional suggested command template for the hint system), `verify` (the verification spec, see 3.3), `hints` (ordered list of progressive nudges, most general first), and `xp`.
+A pack file under `quests/` default-exports an object with five top-level fields:
 
-Packs are pure data plus optional predicate functions. A pack does not import engine code, which keeps packs portable and safe to hot-load. The engine validates each pack against a schema at load time and refuses to load malformed packs with a readable error.
+| Field | Type | Purpose |
+|---|---|---|
+| `id` | string | Unique pack identifier (kebab-case) |
+| `title` | string | Display name |
+| `synopsis` | string | One-line pitch shown in the browser |
+| `tool` | string | The real CLI being taught (e.g. `gh copilot`) |
+| `stories` | `Story[]` | One or more stories (see below) |
+
+**Legacy note:** Packs may also use a flat `steps[]` array (no stories). The loader normalises these into a single `{ id: 'default' }` story so the rest of the engine sees a uniform shape.
+
+#### Story
+
+Each story has `id`, `title`, `setting` (shown in the story picker), optional `art` (ASCII art), and `steps` — an array of `Step | BranchPoint`.
+
+#### Step
+
+```js
+{
+  id: 'step-1',              // unique within pack
+  narration: '...',          // story text shown before prompt (second-person)
+  objective: '...',          // plain-English goal shown in the objective box
+  verify: { mode: 'shell', ...predicates },
+  hints: ['...', '...', '...'],  // 3+ hints, oblique → nearly-explicit
+  xp: 30,
+  art: '...',                // optional ASCII art shown above narration
+}
+```
+
+#### BranchPoint
+
+```js
+{
+  id: 'bp-1',
+  type: 'branch',
+  narration: '...',          // shown above the branch picker
+  branches: [
+    { label: '...', flavor: '...', steps: [/* Step[] */] },
+    { label: '...', flavor: '...', steps: [/* Step[] */] },
+  ],
+}
+```
+
+After the branch picker resolves, both paths converge back into the parent `steps[]`. Any steps after the BranchPoint in the parent array are shared by all branches.
+
+Packs are pure data plus optional `custom` predicate functions. A pack does not import engine code, keeping packs portable and hot-loadable.
 
 ### 3.2 Engine state machine
 
-The quest player is a small state machine with four states: `narrate`, `await_command`, `verifying`, and `resolve`. `narrate` prints the step story, renders the objective panel, and transitions to `await_command`. `await_command` shows a prompt with keyboard options (`[enter] run · [h] hint · [s] skip · [q] quit`); on enter it collects the command string, transitions to `verifying`, and delegates to the verifier. `verifying` shows an animated spinner and awaits the verification result. `resolve` branches: on success it awards XP, persists progress, and transitions to the next step's `narrate`; on failure it shows the failure reason, offers another hint, and loops back to `await_command`.
+The quest player is a state machine with four states:
+
+```
+narrate → await_command → verifying → resolve → narrate (next step)
+                ↑__________________↙ (on failure)
+```
+
+- **narrate** — prints step story, renders objective panel, transitions to `await_command`
+- **await_command** — shows prompt with keyboard options (`[enter] run · [h] hint · [s] skip · [q] quit`)
+- **verifying** — shows animated spinner, awaits verification result
+- **resolve** — on success: awards XP, persists, → next step; on failure: shows reason, → `await_command`
+
+Branch points are resolved by `resolveSteps()` before the step loop begins. The UI calls `pickBranch()` and the resolved flat list of steps is used for the remainder of the story.
 
 ### 3.3 Command verification
 
-Verification supports three modes, chosen per step. `shell` mode spawns `/bin/sh -c <command>` (Windows uses `cmd /c`) with the user's environment, captures stdout/stderr/exit code, and checks a combination of optional predicates: `exitCode`, `stdoutContains`, `stdoutMatches` (regex), `stderrContains`, and `custom` (a function exported by the pack that receives the captured result and returns `{ ok, reason }`). `which` mode simply checks whether a binary is on PATH using `which`/`where`. `prompt` mode skips shell execution and asks the user a multiple-choice question (used for cognitive steps between hands-on ones).
+Three modes:
 
-For MVP, verification runs in the same working directory as the user's shell, not a sandbox. The narration and hints are responsible for telling the user when a step will create files or remote state. A `--sandbox` flag is deferred to post-MVP.
+| Mode | Mechanism | Predicates |
+|---|---|---|
+| `shell` | Spawns `/bin/sh -c <command>` (Windows: `cmd /c`) with user's env | `exitCode`, `stdoutContains`, `stdoutMatches` (regex), `stderrContains`, `custom(result, input)` |
+| `which` | Calls `which`/`where` to check if a binary is on PATH | `binary` |
+| `prompt` | Multiple-choice question, no shell spawn | `choices`, `answer` (single) or `answers` (array) |
+
+All predicates are additive (AND). A step passes only if every specified predicate matches. Prefer `stdoutContains` and `stdoutMatches` over `exitCode`-only checks for more resilient verification.
+
+The `custom` function receives `{ stdout, stderr, exitCode }` and the raw input string; it returns `{ ok, reason }`. Custom functions are the escape hatch for predicates too complex to express declaratively.
+
+Verification runs in the user's actual shell, not a sandbox. Quest narration is responsible for telling the user when a step will create files or remote state.
 
 ### 3.4 Hint system
 
-Hints are an ordered array on the step. The first hint is the most oblique ("You need a command that asks the tool who you are"), the last is essentially the answer with a key flag redacted. The player tracks a hint index per step; each `h` keypress advances the index and renders the hint in a boxed panel with a typewriter effect. Using a hint costs 25% of the step's XP; using all hints reduces the step to 25% of the XP, floored at 5.
+Hints are an ordered array on each step. The first hint is the most oblique; the last is essentially the answer. The engine tracks a `hintsUsed` counter per step per quest.
+
+**XP penalty:** Each hint costs 25% of the step's base XP. Using all hints reduces the award to 25% of base, floored at 5 XP minimum.
+
+```
+xp = max(floor(base * 0.25), floor(base - base * 0.25 * hintsUsed))
+     with minimum = max(5, floor(base * 0.25))
+```
 
 ### 3.5 Progress store
 
-Progress is a single JSON file at `~/.terminal-tutor/progress.json` with the shape `{ profile: { xp, level, createdAt }, quests: { [questId]: { completedStepIds, currentStepId, hintsUsed, startedAt, completedAt } } }`. All writes are atomic (write to a temp file, rename). The store is the single source of truth for resumption; the app shell reads it on boot to flag in-progress quests in the browser.
+Progress is a single JSON file at `~/.terminal-tutor/progress.json` (overridable with `TT_PROGRESS_DIR`).
 
-### 3.6 UI kit
+```json
+{
+  "profile": {
+    "xp": 120,
+    "level": 2,
+    "createdAt": "2026-05-01T10:00:00.000Z"
+  },
+  "quests": {
+    "copilot-cli": {
+      "storyId": "debug-at-3am",
+      "completedStepIds": ["c1-which", "c1-extension-list"],
+      "currentStepId": "c1-auth",
+      "hintsUsed": { "c1-which": 1 },
+      "startedAt": "2026-05-01T10:00:00.000Z",
+      "completedAt": null
+    }
+  }
+}
+```
 
-The UI kit wraps a small set of libraries: `chalk` for color, `gradient-string` for multi-color titles, `figlet` for ASCII art banners, `chalk-animation` for pulse/rainbow/neon animations on the splash screen, `boxen` for bordered panels, `ora` for spinners during verification, `cli-progress` for XP and quest progress bars, and `@inquirer/prompts` for menus and confirmations. Every surface the user sees goes through the UI kit so the visual language stays consistent.
+All writes are atomic: write to `<file>.tmp` → `rename` to final path. `profile.level` is recomputed and persisted each time XP changes so the stored value is always accurate.
 
-Animation is used deliberately: a rainbow animated title on the splash (stops after three seconds to respect CPU), a typewriter effect on narration and hints, a pulsing spinner during verification, a confetti-style XP burst on success, and a subtle color shift on level-up. The kit detects `NO_COLOR` and narrow terminals and gracefully degrades.
+### 3.6 XP and levelling
 
-## 4. Data flow and integration points
+```js
+level = ceil(sqrt(xp / 50))   // level 1 at xp=0, level 2 at xp=50, level 3 at xp=200 …
+```
 
-Boot loads the progress store and the pack catalog (file glob on `quests/*.js`). The browser renders packs with resume-state badges. Selecting a pack enters the player, which reads the pack, looks up the user's `currentStepId`, and enters `narrate` for that step. Every successful step triggers a write to the progress store before the next narration. Quit at any time writes current state and exits cleanly.
+`xp.js` exports three pure functions: `levelForXp(xp)`, `xpForNextLevel(xp)`, `progressToNextLevel(xp)`.
 
-There are no network calls in MVP. Quest packs ship bundled with the app. The only external integration is the user's shell, which is how Terminal Tutor executes and observes commands.
+### 3.7 UI kit
 
-## 5. Key decisions and trade-offs
+The UI kit wraps: `chalk` (color), `gradient-string` (multi-color text), `figlet` (ASCII banner), `chalk-animation` (splash animation), `boxen` (bordered panels), `ora` (spinners), `@inquirer/prompts` (menus, input, confirm).
 
-Node.js was chosen over Python because the TUI animation ecosystem (`chalk-animation`, `gradient-string`, `figlet`, `ora`, `boxen`, `cli-progress`) is markedly richer and produces a more polished feel with less code, and because the target users almost certainly have Node available when they are learning dev CLIs. A pure-data pack format was chosen over a plugin API because it makes contributions safer (no arbitrary code unless declared in a `custom` verifier) and keeps the engine decoupled. Running commands in the user's real shell rather than a sandboxed container was chosen for fidelity — the promise is "learn the real CLI" — at the cost of some foot-gun risk, which is mitigated by narration, hint language, and explicit confirmation before destructive steps.
+Animation is used deliberately and always has a static fallback. `supportsAnimation()` checks `NO_COLOR` and `process.stdout.isTTY`. Narrow terminals (<70 cols) skip animations. `TT_NO_TYPEWRITER=1` disables the typewriter effect (used in tests).
 
-XP and levels are deliberately minimal in MVP: a single global XP counter and a level curve `ceil(sqrt(xp / 50))`. No achievements, streaks, or social features until we see real usage.
+---
 
-## 6. Non-goals for MVP
+## 4. Data flow
 
-No sandboxed execution, no telemetry, no remote pack registry, no multi-user profiles, no Windows-specific niceties beyond "it runs," no GUI, no AI-generated hints, and no editor for authoring packs. These are all plausible post-MVP investments.
+```
+boot
+ └── loadProgress()           reads ~/.terminal-tutor/progress.json
+ └── loadPacks()              globs quests/*.js, validates, normalises
+ └── showSplash()             figlet + animation (or static fallback)
+ └── loop:
+      renderProfileHeader()   xp + level bar
+      pickQuest()             inquirer list
+      pickStory()             inquirer list
+      runQuest(pack, story)
+        resolveSteps()        flatten BranchPoints via pickBranch()
+        for each step:
+          renderStepIntro()   typewriter narration + objective panel
+          promptCommand()     input or select
+          verifyShell/Which/Prompt()
+          markStepComplete()  xp += gain; level = levelForXp(xp)
+          saveProgress()      atomic write
+      renderQuestComplete()   victory panel
+```
+
+There are no network calls in the engine. Quest packs ship bundled. The only external I/O is: the user's shell (command execution) and the progress JSON file.
+
+---
+
+## 5. CLI ↔ Web parity
+
+The web app (`web/`) re-implements `src/engine/` in TypeScript under `web/lib/`. The logic must stay in sync:
+
+| CLI | Web | Notes |
+|---|---|---|
+| `verifier.js` | `verifier.ts` | Same predicates; web runs against `shell-sim.ts` not a real subprocess |
+| `hints.js` | `hints.ts` | Identical math |
+| `xp.js` | `xp.ts` | Identical math |
+| `progress.js` | `progress.ts` | localStorage instead of JSON file |
+| `quests/*.js` | `web/lib/quests/*.ts` | Must stay in sync — edit both when changing a pack |
+
+`which` mode always returns `ok: true` in the browser (tool presence is assumed). The shell simulator (`shell-sim.ts`) handles `ls`, `cd`, `cat`, `git`, `gh`, `npm`, and more with realistic stateful responses.
+
+---
+
+## 6. Key decisions and trade-offs
+
+**Node.js over Python** — the TUI animation ecosystem is richer and produces a more polished feel with less code.
+
+**Pure-data pack format** — contributions are safer (no arbitrary code unless declared in `custom`) and the engine stays decoupled. Packs import nothing from the engine.
+
+**Real shell, not sandbox** — for fidelity. "Learn the real CLI" is the promise. Mitigated by narration, hints, and explicit confirm before skips.
+
+**Stories + branching** — adds narrative depth without extra engine complexity. Branching is resolved up-front (before the step loop) so the state machine stays simple.
+
+**XP penalty per hint** — encourages genuine learning without blocking progress. The minimum XP floor (25% or 5, whichever is higher) ensures the player always earns *something*.
+
+---
 
 ## 7. Testing strategy
 
-Unit tests cover the verifier predicates, the pack schema validator, the progress store's atomic writes, and the XP/level math. Integration tests drive the state machine with a mock shell to confirm that narrate → verify → resolve transitions correctly on success, failure, hint, skip, and quit. A smoke test boots the app with a fake pack and walks it to completion non-interactively. Manual QA covers the animated UI, since "does it feel good" is not automatable.
+| Scope | Location | Approach |
+|---|---|---|
+| Verifier predicates | `test/verifier.test.js` | Unit, fake shell (`TT_FAKE_SHELL=1`) |
+| Pack schema validation | `test/loader.test.js` | Unit, valid + invalid packs |
+| Progress store | `test/progress.test.js` | Unit, tmp dir (`TT_PROGRESS_DIR`) |
+| XP / level math | `test/xp.test.js` | Unit, pure functions |
+| Hint ladder | `test/hints.test.js` | Unit, pure functions |
+| State machine | `test/runner.test.js` | Integration, scripted UI mock |
+| End-to-end smoke | `test/app-smoke.test.js` | Full app with fake pack + fake shell |
+
+Run all tests: `npm test`
+
+Manual QA covers animated UI, since "does it feel good" is not automatable.
+
+---
 
 ## 8. Risks and mitigations
 
-The biggest risk is that verification is too strict and users get stuck; the mitigation is lenient predicates (contains over equals, regex over literal), a progressive hint ladder ending very close to the answer, and a `skip` option that still advances the story. The second risk is terminal compatibility; the mitigation is that every animation has a static fallback and `NO_COLOR` is honored. The third risk is packs drifting from the CLIs they teach when upstream tools change; the mitigation is that packs are data files that maintainers can patch quickly, and the engine reports the exact failing predicate so pack bugs surface clearly.
+| Risk | Mitigation |
+|---|---|
+| Verification too strict → players get stuck | Lenient predicates (contains over equals, regex over literal); progressive hint ladder ending near the answer; skip option |
+| Terminal compatibility | Every animation has a static fallback; `NO_COLOR` is honoured |
+| Quest packs drifting from real CLI behaviour | Packs are data files maintainers can patch quickly; engine reports the exact failing predicate |
+| Web/CLI packs diverging | Both live in the same repo; CLAUDE.md enforces sync requirement |
+
+---
 
 ## 9. Directory layout
 
 ```
 terminal-tutor/
   bin/
-    tt.js                 # entrypoint, shebang, arg parsing
+    tt.js                   # entrypoint, shebang, arg parsing
   src/
-    app.js                # screens and top-level flow
+    app.js                  # screens and top-level flow
     engine/
-      loader.js           # quest pack discovery + schema validation
-      runner.js           # state machine
-      verifier.js         # shell/which/prompt verifiers
-      hints.js            # hint ladder + XP penalty
-      progress.js         # atomic JSON store
-      xp.js               # level curve
+      loader.js             # quest pack discovery + schema validation + normalisation
+      runner.js             # state machine (supports stories + branch points)
+      verifier.js           # shell / which / prompt verifiers
+      hints.js              # hint ladder + XP penalty math
+      progress.js           # atomic JSON store; updates profile.level on XP change
+      xp.js                 # level curve (pure)
     ui/
-      theme.js            # palette, gradients, symbols
-      splash.js           # animated title + intro
-      browser.js          # quest selector
-      player.js           # narration, prompts, spinner, success burst
-      components.js       # boxed panel, progress bar, typewriter
+      theme.js              # palette, gradients, symbols, animation guards
+      splash.js             # animated figlet title + static fallback
+      browser.js            # quest selector + story picker
+      player.js             # narration, prompts, spinner, branch picker, XP burst
+      components.js         # boxed panel, progress bar, typewriter, key hint
   quests/
-    github-cli.js
-    copilot-cli.js
+    copilot-cli.js          # Ghost in the Shell — 3 stories, branching paths
+  web/                      # Browser version (Next.js 14, TypeScript)
+    app/                    # Next.js App Router
+    components/
+      TerminalGame.tsx       # xterm.js terminal + full game loop
+    lib/
+      types.ts              # shared TypeScript types
+      shell-sim.ts          # stateful shell simulator (ls, git, gh, npm, …)
+      verifier.ts           # predicate evaluation (same logic as verifier.js)
+      hints.ts              # hint ladder (mirrors hints.js)
+      xp.ts                 # level curve (mirrors xp.js)
+      progress.ts           # localStorage progress store
+      quests/
+        copilot-cli.ts      # TypeScript mirror of quests/copilot-cli.js
+        index.ts            # re-exports all web packs
   test/
     verifier.test.js
+    loader.test.js
     progress.test.js
     runner.test.js
+    hints.test.js
+    xp.test.js
+    app-smoke.test.js
   package.json
   README.md
   TDD.md
   CLAUDE.md
+  CONTRIBUTING.md
+  PRD.md
 ```
+
+---
 
 ## 10. Open questions
 
-Should hint penalties accumulate across a quest or reset per step (current plan: per step)? Should `skip` still count toward quest completion or lock it out of a "perfect run" badge (deferred to achievements work)? Should we ship a no-install `npx terminal-tutor` entrypoint in MVP (leaning yes, because it eliminates an install step)?
+- Should hint penalties accumulate across a quest or reset per step? (Current: per step)
+- Should `skip` lock out a "perfect run" badge? (Deferred to achievements work)
+- Should we ship a no-install `npx terminal-tutor` entrypoint?
+- Post-MVP quest packs: Claude Code CLI, Codex CLI, Terminal Basics, database CLIs (psql, mongosh)
