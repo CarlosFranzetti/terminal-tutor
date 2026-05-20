@@ -50,6 +50,7 @@ export function getQuestState(state, questId) {
 export function ensureQuestState(state, questId) {
   if (!state.quests[questId]) {
     state.quests[questId] = {
+      storyId: null,
       completedStepIds: [],
       currentStepId: null,
       hintsUsed: {},
@@ -58,6 +59,11 @@ export function ensureQuestState(state, questId) {
     };
   }
   return state.quests[questId];
+}
+
+export function setStory(state, questId, storyId) {
+  const q = ensureQuestState(state, questId);
+  q.storyId = storyId;
 }
 
 export function markStepComplete(state, questId, stepId, xpGained) {

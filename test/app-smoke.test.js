@@ -26,46 +26,45 @@ test('loader + runner can play a full quest end-to-end with fake shell', async (
   const pack = findPack(packs, 'github-cli');
   assert.ok(pack, 'github-cli pack should exist');
 
-  // For each step, use the hint-provided canonical answer where helpful,
-  // and otherwise echo a string that satisfies the step's predicates.
-  const perStepCommand = {
-    'verify-install': 'which gh',
-    'check-version': 'echo "gh version 2.0.0"',
-    'auth-status': 'echo "github.com Logged in as tester"',
-    'find-repo-help': 'echo "create fork clone view"',
-    'view-remote-repo': 'echo "cli/cli repository info"',
-    'list-issues': 'echo "#42 TITLE OPEN sample issue"',
-    'pr-help': 'echo "create edit list review"',
-    'victory-torch': 'echo "escaped the merge conflict dungeon"'
-  };
+  // Play through the first story, always choosing the first branch.
+  const story = pack.stories[0];
+  assert.ok(story, 'github-cli should have at least one story');
 
-  const actions = pack.steps.map((step) => {
-    if (step.verify.mode === 'prompt') {
-      return { kind: 'run', answer: step.verify.answer };
-    }
-    if (step.verify.mode === 'which') {
-      return { kind: 'run', command: perStepCommand[step.id] || 'which x' };
-    }
-    return { kind: 'run', command: perStepCommand[step.id] || 'echo hello' };
-  });
+  // Commands that satisfy each step's custom predicate (fake shell returns exitCode 0).
+  const perStepCommand = {
+    's1-survey':      'ls',
+    's1-git-status':  'git status',
+    's1-b1-diff':     'git diff',
+    's1-b1-add':      'git add .',
+    's1-b2-add':      'git add .',
+    's1-commit':      'git commit -m "test"',
+    's1-gh-version':  'gh --version',
+    's1-auth':        'gh auth status',
+    's1-repo-create': 'gh repo create street-racer-unlimited --public --source=. --push',
+    's1-shipped':     'gh repo view',
+  };
 
   let i = 0;
   const ui = {
     renderQuestStart() {},
     renderStepIntro() {},
-    async promptCommand() { return actions[i++]; },
+    async promptCommand(step) {
+      const cmd = perStepCommand[step.id] || 'echo hello';
+      return { kind: 'run', command: cmd };
+    },
     renderVerifying: () => ({ succeed() {}, fail() {} }),
     renderSuccess() {},
-    renderFailure() {},
+    renderFailure(step, reason) { throw new Error(`Step ${step.id} failed: ${reason}`); },
     renderHint() {},
-    renderQuestComplete() {}
+    renderQuestComplete() {},
+    pickBranch: (bp) => Promise.resolve(bp.branches[0])
   };
 
-  const result = await runQuest(pack, ui);
+  const result = await runQuest(pack, story, ui);
   assert.equal(result.completed, true);
 
   const state = JSON.parse(readFileSync(join(progressDir, 'progress.json'), 'utf8'));
   assert.ok(state.profile.xp > 0, 'should have earned xp');
   assert.ok(state.quests['github-cli'].completedAt, 'quest should be marked complete');
-  assert.equal(state.quests['github-cli'].completedStepIds.length, pack.steps.length);
+  assert.ok(state.quests['github-cli'].completedStepIds.length > 0, 'should have completed steps');
 });

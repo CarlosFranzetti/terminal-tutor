@@ -1,6 +1,6 @@
-# CLAUDE.md — Terminal Tutor
+# CLAUDE.md
 
-Guide for Claude (and any other AI assistant) working in this repo.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## What this project is
 
@@ -37,15 +37,37 @@ quests/
   github-cli.js    MVP pack #1.
   copilot-cli.js   MVP pack #2.
 test/              Unit + integration tests.
+web/               Browser version (Next.js 14, App Router, TypeScript).
+  app/             Next.js routes.
+  components/
+    TerminalGame.tsx  xterm.js terminal + full game loop (mirrors runner.js logic).
+  lib/             TypeScript mirror of src/engine/ — same predicates, different shell.
+    shell-sim.ts   Simulated shell (ls, git, gh, npm, …) — replaces real subprocess.
+    verifier.ts    Predicate evaluation — same logic as CLI verifier.js.
+    quests/        TypeScript quest packs (must stay in sync with quests/).
 ```
+
+## CLI ↔ Web parity
+
+The web app re-implements `src/engine/` in TypeScript under `web/lib/`. The logic must stay in sync:
+- `verifier.ts` mirrors `verifier.js` — same predicates, but runs against `shell-sim.ts` instead of a real subprocess.
+- `which` mode always returns `ok: true` in the browser (tool presence is assumed).
+- Quest packs exist in both `quests/` (CLI, JS) and `web/lib/quests/` (web, TS). When editing a quest, update both.
 
 ## Running and testing
 
 ```bash
+# CLI
 npm install
-node bin/tt.js       # launch directly
-npm link && tt       # install globally as `tt`
-npm test             # run unit + integration tests
+node bin/tt.js           # launch directly
+npm link && tt           # install globally as `tt`
+npm test                 # run all tests
+node --test test/<file>.test.js   # run a single test file
+
+# Web
+cd web && npm install
+npm run dev              # http://localhost:3000
+npm run build            # production build
 ```
 
 Environment flags the code respects:

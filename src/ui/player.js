@@ -8,21 +8,27 @@ import { panel, divider, typewriter, bar, xpBurst, keyHint } from './components.
 
 export function createPlayerUi() {
   return {
-    async renderQuestStart(pack, resumeFromStepId) {
+    async renderQuestStart(pack, story) {
       console.log('');
       console.log('  ' + sunset(`${symbols.sword}  ${pack.title}`));
-      console.log('  ' + palette.muted(pack.synopsis));
-      if (resumeFromStepId) {
-        console.log('  ' + palette.warn(`${symbols.arrow} resuming from after step "${resumeFromStepId}"`));
-      }
+      console.log('  ' + pinkCyan(story.title));
+      console.log('  ' + palette.muted(story.setting));
       console.log(divider());
     },
 
     async renderStepIntro(step, ctx) {
-      const progress = bar((ctx.index) / ctx.total, 28, 'cyan');
-      const header = `  ${palette.muted('Step')} ${pinkCyan(`${ctx.index + 1}/${ctx.total}`)}  ${progress}`;
-      console.log('\n' + header);
+      console.log('\n' + '  ' + palette.dim(`${ctx.questTitle}  •  ${ctx.storyTitle}`));
       console.log('');
+
+      // ASCII art if present
+      if (step.art) {
+        const artLines = step.art.split('\n');
+        for (const line of artLines) {
+          console.log('  ' + chalk.cyan.dim(line));
+        }
+        console.log('');
+      }
+
       await typewriter('  ' + step.narration, { cps: 480, gradientFn: undefined });
       console.log('');
       console.log(panel(palette.accent(step.objective), { color: 'cyan', title: '  objective  ' }));
@@ -67,6 +73,27 @@ export function createPlayerUi() {
       return { kind: 'run', command: trimmed };
     },
 
+    // Branch picker — called when engine hits a BranchPoint
+    async pickBranch(branchPoint) {
+      console.log('');
+      console.log('  ' + pinkCyan(`⚡ ${branchPoint.narration}`));
+      console.log('');
+
+      const choices = branchPoint.branches.map((b) => ({
+        name: `${palette.accent(b.label)}\n      ${palette.muted(b.flavor)}`,
+        value: b.label,
+        short: b.label
+      }));
+
+      const pick = await select({
+        message: pinkCyan('Choose your path'),
+        choices,
+        loop: false
+      });
+
+      return branchPoint.branches.find(b => b.label === pick) ?? null;
+    },
+
     renderVerifying() {
       if (!supportsAnimation()) {
         console.log(palette.muted('  verifying...'));
@@ -106,7 +133,7 @@ export function createPlayerUi() {
     async renderQuestComplete(pack, totalXp) {
       console.log('');
       console.log(panel(
-        `${neon(`${symbols.star}  QUEST COMPLETE  ${symbols.star}`)}\n\n` +
+        `${neon(`${symbols.star}  MISSION ACCOMPLISHED  ${symbols.star}`)}\n\n` +
         `${palette.accent(pack.title)}\n` +
         `${palette.muted('total xp:')} ${sunset(String(totalXp))}`,
         { color: 'magenta', title: '  victory  ' }
