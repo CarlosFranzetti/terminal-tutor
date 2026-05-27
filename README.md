@@ -15,21 +15,36 @@ Terminal Tutor replaces sprawling docs and copy-paste tutorials with **quests** 
 
 ---
 
-## Play it now — browser version 🌐
+## Features
 
-The web version runs entirely in your browser. No install, no setup. Looks and feels exactly like a real terminal.
-
-👉 **[terminal-tutor.vercel.app](https://terminal-tutor.vercel.app)**
-
-Features:
-- xterm.js terminal emulator — real keyboard input, cursor, scrollback
-- Simulated shell responds to `ls`, `cd`, `cat`, `git`, `gh`, `npm`, and more
-- Saves progress to `localStorage` — quit any time, resume later
-- Two quests included (more coming)
+- **Story-driven learning**: Each quest is a narrative adventure that teaches real CLI commands
+- **Dual mode**: Play in your actual terminal or in-browser with xterm.js emulation
+- **Real command verification**: Runs and validates actual shell commands, not just simulations
+- **Progress tracking**: Saves your XP and progress to localStorage
+- **Extensible quest system**: Add new CLI tools by dropping a single `.js` file
+- **Hint system**: Get unstuck with progressive hints (small XP penalty)
+- **No setup for browser**: Jump in immediately at terminal-tutor.vercel.app
 
 ---
 
-## Run it locally — CLI version 💻
+## Tech Stack
+
+- **Language**: TypeScript
+- **CLI**: Node.js with custom game engine
+- **Web**: Next.js 14 (App Router) + xterm.js terminal emulator
+- **Storage**: localStorage for progress persistence
+
+---
+
+## Setup
+
+### Browser Version (Recommended)
+
+👉 **[terminal-tutor.vercel.app](https://terminal-tutor.vercel.app)**
+
+No installation required — just open and play!
+
+### Local CLI Version
 
 ```bash
 # Requires Node 18+
@@ -39,131 +54,62 @@ npm install
 node bin/tt.js
 ```
 
-Or link it globally:
+Or install globally:
 
 ```bash
-npm link
+gnpm link
+# Now run 'tt' from anywhere
 tt
 ```
 
 ---
 
-## Quests
+## Demo
 
-| Quest | Tool | Steps | XP |
-|---|---|---|---|
-| **Ship the Ripoff** | `gh` + `git` | 12 | 250 |
-| **Summon the Copilot** | `gh copilot` | 9 | 220 |
+**Live Demo**: [terminal-tutor.vercel.app](https://terminal-tutor.vercel.app)
 
-### Ship the Ripoff
-It's your first day at Midnight Polygon Studios. The CEO wants *StreetRacer Unlimited* — a GTA-inspired open-world racing game — live on GitHub before noon. You learn `ls`, `cat`, `git status/add/commit/push`, `gh auth`, `gh repo create`, and `gh repo view`.
-
-### Summon the Copilot
-Learn to install and use the GitHub Copilot CLI extension — `gh extension`, `gh copilot explain/suggest/run`.
+Two quests available:
+- **Ship the Ripoff** — Learn `gh` and `git` basics (12 steps, 250 XP)
+- **Summon the Copilot** — Master `gh copilot` commands (9 steps, 220 XP)
 
 ---
 
-## Controls (CLI)
+## Screenshots
 
-Inside any quest:
+![Terminal Tutor gameplay showing story narrative and command input](screenshots/gameplay.png)
+
+![Quest selection screen](screenshots/quests.png)
+
+---
+
+## Controls
 
 | Key | Action |
 |---|---|
 | `Enter` | Run the command |
-| `h` | Request a hint (penalty: −25% XP per hint) |
-| `s` | Skip this step (no XP) |
+| `h` | Request a hint (−25% XP penalty) |
+| `s` | Skip current step (no XP) |
 | `q` | Quit and save progress |
 
-Controls are identical in the browser version.
-
 ---
 
-## Adding your own quest pack
+## Future Improvements
 
-A pack is a single `.js` file in `quests/` (CLI) or `web/lib/quests/` (web). Drop it in and it auto-loads.
-
-```js
-// quests/my-pack.js
-export default {
-  id: 'my-pack',
-  title: 'The Pack Title',
-  synopsis: 'One-line pitch.',
-  tool: 'my-cli',
-  steps: [
-    {
-      id: 'step-1',
-      narration: 'The story beat...',
-      objective: 'What the player must do.',
-      verify: { mode: 'shell', stdoutContains: 'expected output', exitCode: 0 },
-      hints: ['Vague hint', 'More specific', 'Nearly explicit — try: `command`'],
-      xp: 30,
-    },
-  ],
-};
-```
-
-**Verification modes:**
-- `shell` — runs the command; supports `exitCode`, `stdoutContains`, `stdoutMatches` (regex), `stderrContains`, `custom(result)`
-- `which` — checks a binary is on PATH
-- `prompt` — multiple-choice question
-
----
-
-## Web app (browser version)
-
-The web version lives in `web/` — a Next.js 14 app with App Router and TypeScript.
-
-```
-web/
-  app/              Next.js app router
-  components/
-    TerminalGame.tsx  xterm.js terminal + full game loop
-  lib/
-    quests/         Quest pack definitions (TypeScript)
-    shell-sim.ts    Simulated shell (ls, git, gh, npm, …)
-    verifier.ts     Predicate evaluation (same logic as CLI)
-    xp.ts           XP / level math
-    hints.ts        Hint ladder + XP penalty
-    progress.ts     localStorage progress store
-```
-
-### Develop the web version
-
-```bash
-cd web
-npm install
-npm run dev     # http://localhost:3000
-npm run build   # production build
-```
-
-### Deploy to Vercel
-
-```bash
-cd web
-npx vercel --prod
-```
-
----
-
-## Project layout
-
-```
-bin/tt.js          CLI entrypoint
-src/app.js         CLI screens and flow
-src/engine/        loader, runner, verifier, hints, progress, xp
-src/ui/            theme, splash, browser, player, components
-quests/            CLI quest packs
-web/               Browser version (Next.js)
-test/              Unit and integration tests
-CLAUDE.md          Repo guide for AI assistants
-TDD.md             Full technical design
-```
+- More quest packs for popular CLI tools (npm, docker, aws)
+- Multiplayer mode for classroom settings
+- Achievement badges and leaderboards
+- Custom quest editor UI
+- Mobile-friendly touch controls
 
 ---
 
 ## Contributing
 
-Open an issue or PR. New quest packs are the highest-leverage contribution — one well-written pack teaches a whole CLI tool. Run `npm test` before opening a PR against the CLI.
+New quest packs are the highest-leverage contribution! Each pack teaches a whole CLI tool through narrative. Check `TDD.md` for technical details.
+
+```bash
+npm test  # Run tests before submitting PR
+```
 
 ## License
 
