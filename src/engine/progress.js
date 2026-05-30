@@ -4,6 +4,7 @@
 import { mkdirSync, existsSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { levelForXp } from './xp.js';
 
 function resolveDir() {
   return process.env.TT_PROGRESS_DIR || join(homedir(), '.terminal-tutor');
@@ -72,6 +73,8 @@ export function markStepComplete(state, questId, stepId, xpGained) {
     q.completedStepIds.push(stepId);
   }
   state.profile.xp = (state.profile.xp || 0) + xpGained;
+  // Keep the stored level in sync so it is accurate on resume.
+  state.profile.level = levelForXp(state.profile.xp);
   return state;
 }
 

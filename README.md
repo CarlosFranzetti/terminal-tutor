@@ -15,7 +15,7 @@ Terminal Tutor replaces sprawling docs and copy-paste tutorials with **quests** 
 
 ---
 
-## Play it now — browser version 🌐
+## Features
 
 The web version runs entirely in your browser. No install, no setup. Looks and feels exactly like a real terminal.
 
@@ -25,11 +25,27 @@ Features:
 - xterm.js terminal emulator — real keyboard input, cursor, scrollback
 - Simulated shell responds to `ls`, `cd`, `cat`, `git`, `gh`, `npm`, and more
 - Saves progress to `localStorage` — quit any time, resume later
-- Two quests included (more coming)
 
 ---
 
-## Run it locally — CLI version 💻
+## Tech Stack
+
+- **Language**: TypeScript
+- **CLI**: Node.js with custom game engine
+- **Web**: Next.js 14 (App Router) + xterm.js terminal emulator
+- **Storage**: localStorage for progress persistence
+
+---
+
+## Setup
+
+### Browser Version (Recommended)
+
+👉 **[terminal-tutor.vercel.app](https://terminal-tutor.vercel.app)**
+
+No installation required — just open and play!
+
+### Local CLI Version
 
 ```bash
 # Requires Node 18+
@@ -39,48 +55,60 @@ npm install
 node bin/tt.js
 ```
 
-Or link it globally:
+Or install globally:
 
 ```bash
-npm link
+gnpm link
+# Now run 'tt' from anywhere
 tt
 ```
 
 ---
 
-## Quests
+## Quest packs
 
-| Quest | Tool | Steps | XP |
-|---|---|---|---|
-| **Ship the Ripoff** | `gh` + `git` | 12 | 250 |
-| **Summon the Copilot** | `gh copilot` | 9 | 220 |
+| Pack | Tool | Stories | Steps | Total XP |
+|---|---|---|---|---|
+| **Ghost in the Shell** | `gh copilot` | 3 | 25 | ~430 |
 
-### Ship the Ripoff
-It's your first day at Midnight Polygon Studios. The CEO wants *StreetRacer Unlimited* — a GTA-inspired open-world racing game — live on GitHub before noon. You learn `ls`, `cat`, `git status/add/commit/push`, `gh auth`, `gh repo create`, and `gh repo view`.
+### Ghost in the Shell — `gh copilot`
 
-### Summon the Copilot
-Learn to install and use the GitHub Copilot CLI extension — `gh extension`, `gh copilot explain/suggest/run`.
+Three branching stories about using `gh copilot explain` and `gh copilot suggest` when you're stuck in the terminal.
+
+| Story | Setting |
+|---|---|
+| **Summon the Copilot** | Standup in 20 minutes. Learn `gh copilot` before the sprint starts. |
+| **Debug at 3am** | Production down. Cryptic error. Stack Overflow has nothing. You have Copilot. |
+| **The New Hire's Secret Weapon** | Week 1. Impossible ticket. `gh copilot suggest` writes the commands you don't know yet. |
+
+Each story has a **branching decision point** — your choice shapes the path through the quest.
 
 ---
 
-## Controls (CLI)
+## Screenshots
 
-Inside any quest:
+![Terminal Tutor gameplay showing story narrative and command input](screenshots/gameplay.png)
+
+![Quest selection screen](screenshots/quests.png)
+
+---
+
+## Controls
 
 | Key | Action |
 |---|---|
 | `Enter` | Run the command |
-| `h` | Request a hint (penalty: −25% XP per hint) |
-| `s` | Skip this step (no XP) |
+| `h` | Request a hint (−25% XP penalty) |
+| `s` | Skip current step (no XP) |
 | `q` | Quit and save progress |
-
-Controls are identical in the browser version.
 
 ---
 
-## Adding your own quest pack
+## Adding a quest pack
 
-A pack is a single `.js` file in `quests/` (CLI) or `web/lib/quests/` (web). Drop it in and it auto-loads.
+A pack is a single `.js` file in `quests/`. Drop it in and it auto-loads at next launch.
+
+### Simple pack (flat steps)
 
 ```js
 // quests/my-pack.js
@@ -89,23 +117,59 @@ export default {
   title: 'The Pack Title',
   synopsis: 'One-line pitch.',
   tool: 'my-cli',
-  steps: [
+  stories: [
     {
-      id: 'step-1',
-      narration: 'The story beat...',
-      objective: 'What the player must do.',
-      verify: { mode: 'shell', stdoutContains: 'expected output', exitCode: 0 },
-      hints: ['Vague hint', 'More specific', 'Nearly explicit — try: `command`'],
-      xp: 30,
+      id: 'story-1',
+      title: 'Story One',
+      setting: 'One-liner shown in the story picker.',
+      steps: [
+        {
+          id: 'step-1',
+          narration: 'The story beat — second person, present tense.',
+          objective: 'What the player must do.',
+          verify: { mode: 'shell', stdoutContains: 'expected output', exitCode: 0 },
+          hints: ['Vague hint', 'More specific', 'Nearly explicit — try: `command`'],
+          xp: 30,
+        },
+      ],
     },
   ],
 };
 ```
 
-**Verification modes:**
-- `shell` — runs the command; supports `exitCode`, `stdoutContains`, `stdoutMatches` (regex), `stderrContains`, `custom(result)`
-- `which` — checks a binary is on PATH
-- `prompt` — multiple-choice question
+### With branching
+
+```js
+steps: [
+  {
+    id: 'bp-1',
+    type: 'branch',
+    narration: 'Two paths appear before you.',
+    branches: [
+      {
+        label: 'Path A',
+        flavor: 'One-line description shown in picker.',
+        steps: [/* normal steps */],
+      },
+      {
+        label: 'Path B',
+        flavor: 'Alternative route.',
+        steps: [/* normal steps */],
+      },
+    ],
+  },
+],
+```
+
+### Verification modes
+
+| Mode | What it checks |
+|---|---|
+| `shell` | Runs the command; evaluates `exitCode`, `stdoutContains`, `stdoutMatches` (regex), `stderrContains`, `custom(result, input)` |
+| `which` | Checks a binary is on PATH (`verify.binary`) |
+| `prompt` | Multiple-choice question (`verify.choices`, `verify.answer` or `verify.answers[]`) |
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full authoring guide.
 
 ---
 
@@ -119,12 +183,13 @@ web/
   components/
     TerminalGame.tsx  xterm.js terminal + full game loop
   lib/
-    quests/         Quest pack definitions (TypeScript)
+    quests/         Quest pack definitions (TypeScript mirrors of quests/)
     shell-sim.ts    Simulated shell (ls, git, gh, npm, …)
-    verifier.ts     Predicate evaluation (same logic as CLI)
+    verifier.ts     Predicate evaluation (same logic as CLI verifier.js)
     xp.ts           XP / level math
     hints.ts        Hint ladder + XP penalty
     progress.ts     localStorage progress store
+    types.ts        Shared TypeScript types
 ```
 
 ### Develop the web version
@@ -152,18 +217,23 @@ bin/tt.js          CLI entrypoint
 src/app.js         CLI screens and flow
 src/engine/        loader, runner, verifier, hints, progress, xp
 src/ui/            theme, splash, browser, player, components
-quests/            CLI quest packs
-web/               Browser version (Next.js)
+quests/            CLI quest packs (.js)
+web/               Browser version (Next.js 14, TypeScript)
 test/              Unit and integration tests
 CLAUDE.md          Repo guide for AI assistants
-TDD.md             Full technical design
+TDD.md             Full technical design document
+CONTRIBUTING.md    How to add quest packs and contribute code
 ```
 
 ---
 
 ## Contributing
 
-Open an issue or PR. New quest packs are the highest-leverage contribution — one well-written pack teaches a whole CLI tool. Run `npm test` before opening a PR against the CLI.
+Open an issue or PR. New quest packs are the highest-leverage contribution — one well-written pack teaches a whole CLI tool. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
+
+```bash
+npm test   # must be green before submitting
+```
 
 ## License
 
