@@ -15,7 +15,7 @@ Terminal Tutor replaces sprawling docs and copy-paste tutorials with **quests** 
 
 ---
 
-## Play it now — browser version 🌐
+## Features
 
 The web version runs entirely in your browser. No install, no setup. Looks and feels exactly like a real terminal.
 
@@ -28,7 +28,24 @@ Features:
 
 ---
 
-## Run it locally — CLI version 💻
+## Tech Stack
+
+- **Language**: TypeScript
+- **CLI**: Node.js with custom game engine
+- **Web**: Next.js 14 (App Router) + xterm.js terminal emulator
+- **Storage**: localStorage for progress persistence
+
+---
+
+## Setup
+
+### Browser Version (Recommended)
+
+👉 **[terminal-tutor.vercel.app](https://terminal-tutor.vercel.app)**
+
+No installation required — just open and play!
+
+### Local CLI Version
 
 ```bash
 # Requires Node 18+
@@ -38,10 +55,11 @@ npm install
 node bin/tt.js
 ```
 
-Or link it globally:
+Or install globally:
 
 ```bash
-npm link
+gnpm link
+# Now run 'tt' from anywhere
 tt
 ```
 
@@ -67,22 +85,26 @@ Each story has a **branching decision point** — your choice shapes the path th
 
 ---
 
-## Controls (CLI)
+## Screenshots
 
-Inside any quest:
+![Terminal Tutor gameplay showing story narrative and command input](screenshots/gameplay.png)
+
+![Quest selection screen](screenshots/quests.png)
+
+---
+
+## Controls
 
 | Key | Action |
 |---|---|
 | `Enter` | Run the command |
-| `h` | Request a hint (penalty: −25% XP per hint) |
-| `s` | Skip this step (no XP) |
+| `h` | Request a hint (−25% XP penalty) |
+| `s` | Skip current step (no XP) |
 | `q` | Quit and save progress |
-
-Controls are identical in the browser version.
 
 ---
 
-## Adding your own quest pack
+## Adding a quest pack
 
 A pack is a single `.js` file in `quests/`. Drop it in and it auto-loads at next launch.
 
