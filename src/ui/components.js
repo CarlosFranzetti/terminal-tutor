@@ -32,8 +32,8 @@ export async function typewriter(text, { cps = 320, gradientFn } = {}) {
   for (let li = 0; li < lines.length; li++) {
     const line = lines[li];
     for (let i = 0; i < line.length; i++) {
-      const chunk = line.slice(0, i + 1);
-      process.stdout.write('\r' + (gradientFn ? gradientFn(chunk) : chunk));
+      const char = line[i];
+      process.stdout.write(gradientFn ? gradientFn(char) : char);
       // eslint-disable-next-line no-await-in-loop
       await new Promise((r) => setTimeout(r, delayMs));
     }
