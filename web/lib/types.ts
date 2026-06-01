@@ -57,6 +57,7 @@ export type Story = {
 
 export type Pack = {
   id: string;
+  order?: number;
   title: string;
   synopsis: string;
   tool: string;

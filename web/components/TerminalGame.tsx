@@ -311,7 +311,9 @@ export default function TerminalGame() {
         ...pack.stories.map((s, i) => {
           const isActive = q?.storyId === s.id;
           const badge = isActive ? A.yellow + ' ← last played' + A.reset : '';
-          return `${A.brightYellow}${i + 1}.${A.reset} ${A.bold}${s.title}${A.reset}  ${A.dim}${s.setting}${A.reset}${badge}`;
+          const maxSetting = Math.max(20, 50 - s.title.length);
+          const setting = s.setting.length > maxSetting ? s.setting.slice(0, maxSetting - 1) + '…' : s.setting;
+          return `${A.brightYellow}${i + 1}.${A.reset} ${A.bold}${s.title}${A.reset}  ${A.dim}${setting}${A.reset}${badge}`;
         }),
         A.dim + '← Back' + A.reset,
       ];

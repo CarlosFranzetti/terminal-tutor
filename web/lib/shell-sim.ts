@@ -387,9 +387,12 @@ const HANDLERS: Array<[RegExp, Handler]> = [
   [/^cp(\s|$)/, (args) => {
     const names = args.filter(a => !a.startsWith('-'));
     if (names.length < 2) return err('cp: missing destination file operand\n');
-    const [src, dst] = [resolvePath(names[0]), resolvePath(names[1])];
-    if (!FS.has(src)) return err(`cp: ${names[0]}: No such file or directory\n`);
-    FS.set(dst, FS.get(src)!);
+    const [srcRaw, dstRaw] = [names[0], names[1]];
+    const [src, dst] = [resolvePath(srcRaw), resolvePath(dstRaw)];
+    if (!FS.has(src) && !FS.has(srcRaw)) return err(`cp: ${srcRaw}: No such file or directory\n`);
+    FS.set(dst, FS.get(src) ?? FS.get(srcRaw) ?? 'file');
+    const content = FILE_CONTENTS[srcRaw] ?? FILE_CONTENTS[src];
+    if (content) FILE_CONTENTS[dst] = content;
     return ok('');
   }],
 
@@ -457,6 +460,10 @@ const HANDLERS: Array<[RegExp, Handler]> = [
       npm: '/opt/homebrew/bin/npm',
       ls: '/bin/ls',
       cat: '/bin/cat',
+      claude: '/opt/homebrew/bin/claude',
+      bash: '/bin/bash',
+      grep: '/usr/bin/grep',
+      find: '/usr/bin/find',
     };
     return known[bin] ? ok(known[bin] + '\n') : err(`${bin} not found\n`, 1);
   }],
@@ -469,6 +476,21 @@ const HANDLERS: Array<[RegExp, Handler]> = [
   [/^echo(\s|$)/, (_, raw) => {
     const content = raw.replace(/^echo\s*/, '').replace(/^(["'])(.*)\1$/, '$2');
     return ok(content + '\n');
+  }],
+
+  // ── wc ────────────────────────────────────────────────────────────────────
+  [/^wc(\s|$)/, (args) => {
+    const countLines = args.includes('-l') || args.includes('-lw') || args.includes('-wl');
+    const target = args.find(a => !a.startsWith('-'));
+    if (!target) return err('wc: missing file operand\n');
+    const resolved = resolvePath(target);
+    const content = FILE_CONTENTS[target] ?? FILE_CONTENTS[resolved] ?? '';
+    if (!FS.has(resolved) && !FS.has(target)) return err(`wc: ${target}: No such file or directory\n`);
+    const lines = content ? content.split('\n').filter(Boolean).length : 0;
+    const words = content ? content.split(/\s+/).filter(Boolean).length : 0;
+    const chars = content.length;
+    if (countLines) return ok(`      ${lines} ${target}\n`);
+    return ok(`      ${lines}      ${words}      ${chars} ${target}\n`);
   }],
 
   // ── clear ─────────────────────────────────────────────────────────────────
@@ -671,6 +693,47 @@ const HANDLERS: Array<[RegExp, Handler]> = [
   // Catch-all gh
   [/^gh(\s|$)/, (_, raw) => ok(`gh: ran "${raw}" — (simulated, exit 0)\n`)],
 
+  // ── chmod ─────────────────────────────────────────────────────────────────
+  [/^chmod(\s|$)/, (args) => {
+    const target = args.find(a => !a.startsWith('-') && !a.includes('+') && !a.includes('-') && !/^\d+$/.test(a));
+    const perm = args.find(a => a.includes('+') || /^\d{3,4}$/.test(a));
+    if (!target) return err('chmod: missing operand\n');
+    // Simulate making executable — record in FS, succeed
+    return ok('');
+  }],
+
+  // ── claude ────────────────────────────────────────────────────────────────
+  [/^claude(\s|$)/, (args) => {
+    if (args[0] === '--version') return ok('claude 1.0.0 (Claude Sonnet 4.6)\n');
+    if (args[0] === '--help' || args[0] === '-h') return ok('Claude Code — an AI coding assistant.\n\nUsage: claude [flags]\n\n  --version  Print version\n  --help     Show help\n\nInside a session, describe what you want in plain English.\n');
+    return ok('[Simulated Claude Code session — in the real CLI, type your request here]\n> ');
+  }],
+
+  // ── bash / sh ─────────────────────────────────────────────────────────────
+  [/^(bash|sh)(\s|$)/, (args) => {
+    const script = args.find(a => !a.startsWith('-'));
+    if (script) {
+      const resolved = resolvePath(script);
+      if (!FS.has(resolved) && !FS.has(script)) return err(`${script}: No such file or directory\n`);
+      // Simulate running a path-scan-style script
+      return ok('/usr/bin/awk\n/usr/bin/cat\n/usr/bin/curl\n/usr/bin/find\n/usr/bin/grep\n/usr/bin/head\n/usr/bin/ls\n/usr/bin/man\n/usr/bin/sort\n/usr/bin/tail\n/usr/bin/wc\n/opt/homebrew/bin/gh\n/opt/homebrew/bin/git\n/opt/homebrew/bin/node\n/opt/homebrew/bin/npm\n/opt/homebrew/bin/claude\n');
+    }
+    return ok('');
+  }],
+
+  // ── head ──────────────────────────────────────────────────────────────────
+  [/^head(\s|$)/, (args) => {
+    const n = parseInt(args.find(a => /^-\d+$/.test(a))?.slice(1) ?? '10', 10);
+    const target = args.find(a => !a.startsWith('-'));
+    if (target) {
+      const content = FILE_CONTENTS[resolvePath(target)] ?? FILE_CONTENTS[target] ?? '';
+      const lines = content.split('\n').slice(0, n).join('\n');
+      return ok(lines + '\n');
+    }
+    // head with no file — return simulated output (used in pipe context)
+    return ok('/usr/bin/awk\n/usr/bin/cat\n/usr/bin/curl\n/usr/bin/find\n/usr/bin/grep\n/usr/bin/head\n/usr/bin/ls\n/usr/bin/man\n/usr/bin/sort\n/usr/bin/tail\n/usr/bin/wc\n/opt/homebrew/bin/gh\n/opt/homebrew/bin/git\n/opt/homebrew/bin/node\n/opt/homebrew/bin/npm\n/opt/homebrew/bin/claude\n');
+  }],
+
   // ── Fallthrough for common aliases ────────────────────────────────────────
   [/^(ll|la)$/, (_, raw) => {
     const showHidden = raw === 'la';
@@ -706,6 +769,24 @@ function suggestCommand(query: string): string {
 export function runCommand(cmd: string): ShellResult {
   const trimmed = cmd.trim();
   if (!trimmed) return ok('');
+
+  // Handle output redirection (>> then >)
+  const appendMatch = trimmed.match(/^(.+?)\s*>>\s*([^\s>]+)\s*$/);
+  if (appendMatch) {
+    const result = runCommand(appendMatch[1].trim());
+    const resolved = resolvePath(appendMatch[2].trim());
+    FS.set(resolved, 'file');
+    FILE_CONTENTS[resolved] = (FILE_CONTENTS[resolved] ?? '') + result.stdout;
+    return { stdout: '', stderr: result.stderr, exitCode: result.exitCode };
+  }
+  const redirectMatch = trimmed.match(/^(.+?)\s*>\s*([^\s>]+)\s*$/);
+  if (redirectMatch) {
+    const result = runCommand(redirectMatch[1].trim());
+    const resolved = resolvePath(redirectMatch[2].trim());
+    FS.set(resolved, 'file');
+    FILE_CONTENTS[resolved] = result.stdout;
+    return { stdout: '', stderr: result.stderr, exitCode: result.exitCode };
+  }
 
   const parts = trimmed.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
   const argv = parts.slice(1).map(p => p.replace(/^["']|["']$/g, ''));
