@@ -4,6 +4,7 @@
 // Two endings: save the report vs. go deeper with grep
 
 export default {
+  order: 5,
   id: 'claude-code',
   title: 'Ghost Protocol',
   synopsis: 'You\'re in. Root shell on an unknown machine. You need to know what weapons are available before you make your next move. Your tool: Claude Code — an AI that writes software on command. Your mission: build a recon tool that maps every CLI available in this machine\'s PATH.',

@@ -7,7 +7,7 @@ import { divider } from './components.js';
 
 export async function showSplash() {
   const title = figlet.textSync('Terminal Tutor', {
-    font: 'Small Slant',
+    font: 'Slant',
     horizontalLayout: 'default'
   });
 

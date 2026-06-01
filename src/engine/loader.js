@@ -125,7 +125,12 @@ export async function loadPacks(dir = QUESTS_DIR) {
     }
     packs.push(normalizePack(pack));
   }
-  packs.sort((a, b) => a.title.localeCompare(b.title));
+  packs.sort((a, b) => {
+    const ao = typeof a.order === 'number' ? a.order : Infinity;
+    const bo = typeof b.order === 'number' ? b.order : Infinity;
+    if (ao !== bo) return ao - bo;
+    return a.title.localeCompare(b.title);
+  });
   return packs;
 }
 

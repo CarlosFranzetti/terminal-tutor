@@ -3,6 +3,7 @@
 // Three branching endings via nested binary branches.
 
 export default {
+  order: 1,
   id: 'terminal-basics',
   title: 'Operation: Nightfall',
   synopsis: 'You\'re Agent Zero — ghost operative, zero digital footprint. You have shell access to a target workstation and four minutes to find the intel, extract it, and vanish. The terminal is your only weapon.',

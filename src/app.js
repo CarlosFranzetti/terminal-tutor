@@ -9,6 +9,7 @@ import { createPlayerUi } from './ui/player.js';
 import { palette, symbols } from './ui/theme.js';
 
 export async function runApp() {
+  console.clear();
   await showSplash();
 
   const packs = await loadPacks();

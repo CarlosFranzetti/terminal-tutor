@@ -32,6 +32,7 @@ const FORK_ART = `
 `;
 
 export default {
+  order: 3,
   id: 'github-cli',
   title: 'The GitHub Chronicles',
   synopsis: 'Three stories. One tool. Ship code with `gh` before everything falls apart.',

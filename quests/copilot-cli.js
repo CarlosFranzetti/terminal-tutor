@@ -29,6 +29,7 @@ const HIRE_ART = `
 `;
 
 export default {
+  order: 4,
   id: 'copilot-cli',
   title: 'Ghost in the Shell',
   synopsis: "Three stories about using `gh copilot` to explain errors and suggest commands when you're stuck.",
