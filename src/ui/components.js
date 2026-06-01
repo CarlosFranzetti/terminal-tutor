@@ -22,13 +22,34 @@ export function panel(text, options = {}) {
   });
 }
 
+function wordWrap(text, maxWidth) {
+  const result = [];
+  for (const line of text.split('\n')) {
+    if (line.length <= maxWidth) { result.push(line); continue; }
+    const indentMatch = line.match(/^(\s*)/);
+    const indent = indentMatch ? indentMatch[1] : '';
+    const available = Math.max(20, maxWidth - indent.length);
+    const words = line.slice(indent.length).split(' ');
+    let current = '';
+    for (const word of words) {
+      if (!current) { current = word; }
+      else if (current.length + 1 + word.length <= available) { current += ' ' + word; }
+      else { result.push(indent + current); current = word; }
+    }
+    if (current) result.push(indent + current);
+  }
+  return result.join('\n');
+}
+
 export async function typewriter(text, { cps = 320, gradientFn } = {}) {
+  const width = Math.min(termWidth(), 90) - 4;
+  const wrapped = wordWrap(text, width);
   if (!supportsAnimation() || process.env.TT_NO_TYPEWRITER === '1') {
-    process.stdout.write((gradientFn ? gradientFn(text) : text) + '\n');
+    process.stdout.write((gradientFn ? gradientFn(wrapped) : wrapped) + '\n');
     return;
   }
   const delayMs = Math.max(4, Math.floor(1000 / cps));
-  const lines = text.split('\n');
+  const lines = wrapped.split('\n');
   for (let li = 0; li < lines.length; li++) {
     const line = lines[li];
     for (let i = 0; i < line.length; i++) {

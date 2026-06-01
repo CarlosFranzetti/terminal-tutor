@@ -74,6 +74,26 @@ const LOGO_LINES = [
 ];
 
 const BOX_WIDTH = 70;
+const NARRATION_WIDTH = BOX_WIDTH - 4; // visible wrap width for narration text
+
+function wrapText(text: string, maxWidth: number = NARRATION_WIDTH): string {
+  const result: string[] = [];
+  for (const line of text.split('\n')) {
+    if (line.length <= maxWidth) { result.push(line); continue; }
+    const indentMatch = line.match(/^(\s*)/);
+    const indent = indentMatch ? indentMatch[1] : '';
+    const available = Math.max(20, maxWidth - indent.length);
+    const words = line.slice(indent.length).split(' ');
+    let current = '';
+    for (const word of words) {
+      if (!current) { current = word; }
+      else if (current.length + 1 + word.length <= available) { current += ' ' + word; }
+      else { result.push(indent + current); current = word; }
+    }
+    if (current) result.push(indent + current);
+  }
+  return result.join('\n');
+}
 
 function box(lines: string[], color = A.cyan): string {
   const top    = color + '╭' + '─'.repeat(BOX_WIDTH - 2) + '╮' + A.reset;
@@ -480,7 +500,7 @@ export default function TerminalGame() {
           // Show branch narration
           wln();
           wln(divider('─', A.brightYellow));
-          await typewrite('  ' + A.brightYellow + A.bold + bp.narration + A.reset, 12);
+          await typewrite('  ' + A.brightYellow + A.bold + wrapText(bp.narration) + A.reset, 12);
           wln('\r\n');
           wln(`  ${A.brightWhite}Choose your path:${A.reset}`);
           wln();
@@ -521,7 +541,7 @@ export default function TerminalGame() {
         wln();
       }
 
-      await typewrite('  ' + A.white + step.narration + A.reset, 12);
+      await typewrite('  ' + A.white + wrapText(step.narration) + A.reset, 12);
       wln('\r\n');
       wln(box([
         `${A.brightYellow}Objective:${A.reset} ${step.objective}`,
