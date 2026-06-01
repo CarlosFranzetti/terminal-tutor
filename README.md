@@ -1,5 +1,7 @@
 # Terminal Tutor
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **Gamified, story-driven CLI trainer — learn by doing, in your real terminal or your browser.**
 
 ```
@@ -229,12 +231,36 @@ CONTRIBUTING.md    How to add quest packs and contribute code
 
 ## Contributing
 
-Open an issue or PR. New quest packs are the highest-leverage contribution — one well-written pack teaches a whole CLI tool. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
+Contributions are welcome — bug fixes, new quest packs, and web improvements all appreciated.
 
-```bash
-npm test   # must be green before submitting
-```
+**The highest-leverage contribution is a new quest pack.** A single well-written pack can teach an entire CLI tool to someone who's never touched it. See the [Adding a quest pack](#adding-a-quest-pack) section above for the format.
+
+### How to contribute
+
+1. **Fork** the repo and create a branch (`git checkout -b feat/my-quest`)
+2. **Make your changes** — quest packs go in `quests/`, web mirrors in `web/lib/quests/`
+3. **Run the tests** — all 27 must be green before you open a PR:
+   ```bash
+   npm test
+   ```
+4. **Play through your changes** — launch `node bin/tt.js` and complete the quest end-to-end
+5. **Open a pull request** with a short description of what the pack teaches and why it fits
+
+### Guidelines
+
+- Quest narration is written in second person, present tense ("You stand at the gates...")
+- Hints follow a three-tier ladder: vague concept → direction → near-explicit command
+- Verification should be lenient — prefer `stdoutContains` and regex over exact matches
+- Keep quest packs under 200 lines; split into multiple stories if the scope grows
+- Every new quest pack must have an `order` field so it sorts correctly in the menu
+
+### Reporting bugs
+
+Open a GitHub issue with:
+- What you ran and what you expected
+- What actually happened (paste the terminal output)
+- Your OS and Node.js version (`node --version`)
 
 ## License
 
-MIT — Carlos Franzetti
+[MIT](LICENSE) — Carlos Franzetti
