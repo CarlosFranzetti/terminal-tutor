@@ -33,6 +33,7 @@ export default {
             'Your home directory is represented by `~`. Try combining them: `ls ~`',
             'Run exactly: `ls ~`',
           ],
+          solution: 'ls ~',
           xp: 20,
         },
         {
@@ -57,6 +58,7 @@ export default {
             'You can combine flags: `ls -al` is the same as `ls -a -l`. Point it at your home directory.',
             'Run exactly: `ls -al ~`',
           ],
+          solution: 'ls -al ~',
           xp: 25,
         },
         {
@@ -78,6 +80,7 @@ export default {
             'Your staging area should go in your home directory: `mkdir ~/classified`',
             'Run exactly: `mkdir ~/classified`',
           ],
+          solution: 'mkdir ~/classified',
           xp: 20,
         },
         {
@@ -100,6 +103,7 @@ export default {
             'The network map lives at `/etc/hosts`. Your staging area is `~/classified/`. Name the copy `network-map.txt`.',
             'Run exactly: `cp /etc/hosts ~/classified/network-map.txt`',
           ],
+          solution: 'cp /etc/hosts ~/classified/network-map.txt',
           xp: 30,
         },
         {

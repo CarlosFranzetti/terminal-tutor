@@ -4,7 +4,7 @@ import { loadPacks, findPack } from './engine/loader.js';
 import { runQuest } from './engine/runner.js';
 import { loadProgress } from './engine/progress.js';
 import { showSplash } from './ui/splash.js';
-import { pickQuest, pickStory, renderProfileHeader, showNoPacks } from './ui/browser.js';
+import { pickQuest, pickStory, pickCompletedQuest, renderProfileHeader, showNoPacks } from './ui/browser.js';
 import { createPlayerUi } from './ui/player.js';
 import { palette, symbols } from './ui/theme.js';
 
@@ -34,6 +34,18 @@ export async function runApp() {
     }
 
     if (pick.action === 'exit') return goodbye();
+
+    if (pick.action === 'completed') {
+      let completedPick;
+      try {
+        completedPick = await pickCompletedQuest(packs, loadProgress());
+      } catch (err) {
+        if (err?.name === 'ExitPromptError') return goodbye();
+        throw err;
+      }
+      if (!completedPick) continue;
+      pick = completedPick;
+    }
 
     const pack = findPack(packs, pick.packId);
     if (!pack) {

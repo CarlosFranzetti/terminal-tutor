@@ -30,6 +30,8 @@ export type Step = {
   xp: number;
   // optional ASCII art shown before narration
   art?: string;
+  // if present, the exact command/answer is shown prominently — no hint needed
+  solution?: string;
 };
 
 export type Branch = {

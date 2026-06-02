@@ -1,15 +1,12 @@
-# Terminal Tutor
+<p align="center">
+  <img src="assets/logo.svg" alt="Terminal Tutor" width="820"/>
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"/></a>
+</p>
 
 **Gamified, story-driven CLI trainer — learn by doing, in your real terminal or your browser.**
-
-```
-   ______              _           __   ______      __
-  /_  __/__  ________ (_)__  ___ _/ /  /_  __/_ __/ /____  ____
-   / / / _ \/ __/ __ // / _ \/ _ `/ /    / / / // / __/ _ \/ __/
-  /_/  \___/_/ /_/ /_/_/_//_/\_,_/_/    /_/  \_,_/\__/\___/_/
-```
 
 ## What is this?
 

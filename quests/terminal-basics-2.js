@@ -37,6 +37,7 @@ export default {
             'Create the log in your existing classified directory.',
             'Run: `echo "OPERATION: COVER BURN" > ~/classified/mission-log.txt`',
           ],
+          solution: 'echo "OPERATION: COVER BURN" > ~/classified/mission-log.txt',
           xp: 20,
         },
 
@@ -60,6 +61,7 @@ export default {
             'You\'re renaming network-map.txt in ~/classified/ to something less obvious.',
             'Run: `mv ~/classified/network-map.txt ~/classified/topology.dat`',
           ],
+          solution: 'mv ~/classified/network-map.txt ~/classified/topology.dat',
           xp: 20,
         },
 
@@ -84,6 +86,7 @@ export default {
             'Point it at your renamed topology file.',
             'Run: `wc -l ~/classified/topology.dat`',
           ],
+          solution: 'wc -l ~/classified/topology.dat',
           xp: 15,
         },
 

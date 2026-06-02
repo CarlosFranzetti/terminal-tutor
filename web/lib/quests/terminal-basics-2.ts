@@ -32,6 +32,7 @@ const pack: Pack = {
             'Combine them: echo "your text" > filename.txt',
             'Run exactly: `echo "MISSION LOG" > mission-log.txt`',
           ],
+          solution: 'echo "MISSION LOG" > mission-log.txt',
           xp: 30,
         },
         {
@@ -53,6 +54,7 @@ const pack: Pack = {
             'Rename the intel file: mv classified/intel.txt classified/topology.dat',
             'Run exactly: `mv classified/intel.txt classified/topology.dat`',
           ],
+          solution: 'mv classified/intel.txt classified/topology.dat',
           xp: 25,
         },
         {
@@ -75,6 +77,7 @@ const pack: Pack = {
             'Count the lines in your intel: wc -l README.md',
             'Run exactly: `wc -l README.md`',
           ],
+          solution: 'wc -l README.md',
           xp: 20,
         },
         {

@@ -176,12 +176,27 @@ export default function TerminalGame() {
     };
 
     // ── Typewriter effect ───────────────────────────────────────────────────
-    const typewrite = (text: string, delayMs = 18): Promise<void> =>
+    let isTyping = false;
+    let skipTyping = false;
+
+    const typewrite = (text: string, delayMs = 15): Promise<void> =>
       new Promise(resolve => {
+        isTyping = true;
+        skipTyping = false;
         const chars = text.split('');
         let i = 0;
         const tick = () => {
-          if (i >= chars.length) { resolve(); return; }
+          if (skipTyping || i >= chars.length) {
+            // Flush remaining chars instantly
+            while (i < chars.length) {
+              const ch = chars[i++];
+              w(ch === '\n' ? '\r\n' : ch);
+            }
+            isTyping = false;
+            skipTyping = false;
+            resolve();
+            return;
+          }
           const ch = chars[i++];
           w(ch === '\n' ? '\r\n' : ch);
           setTimeout(tick, delayMs);
@@ -247,6 +262,36 @@ export default function TerminalGame() {
     };
 
     // ────────────────────────────────────────────────────────────────────────
+    // COMPLETED QUESTS SUBFOLDER
+    // ────────────────────────────────────────────────────────────────────────
+    const showCompletedQuests = async (completed: Pack[]): Promise<Pack | null> => {
+      wln();
+      wln(divider('═', A.brightGreen));
+      wln(`  ${A.brightGreen}${A.bold}◆ COMPLETED QUESTS${A.reset}`);
+      wln(`  ${A.dim}Replay any mission you've finished.${A.reset}`);
+      wln(divider('═', A.brightGreen));
+      wln();
+
+      const completedState = loadProgress();
+      const opts = [
+        ...completed.map(p => {
+          const q = completedState.quests[p.id];
+          const completedAt = q?.completedAt ? new Date(q.completedAt).toLocaleDateString() : '';
+          return `${A.brightGreen}✓${A.reset} ${A.bold}${p.title}${A.reset}  ${A.dim}completed ${completedAt}${A.reset}`;
+        }),
+        A.dim + '← Back' + A.reset,
+      ];
+
+      const picked = await promptChoice(opts);
+      wln();
+
+      if (picked.includes('Back')) return null;
+
+      const idx = opts.indexOf(picked);
+      return completed[idx] ?? null;
+    };
+
+    // ────────────────────────────────────────────────────────────────────────
     // QUEST BROWSER
     // ────────────────────────────────────────────────────────────────────────
     const showBrowser = async (): Promise<Pack | null> => {
@@ -269,17 +314,25 @@ export default function TerminalGame() {
       wln(`  ${A.bold}${A.brightWhite}SELECT A QUEST PACK${A.reset}`);
       wln();
 
+      const MAIN_QUEST_IDS = new Set(['terminal-basics', 'terminal-basics-2']);
+      const activePacks = allPacks.filter(p => !state.quests[p.id]?.completedAt);
+      const completedPacks = allPacks.filter(p => state.quests[p.id]?.completedAt);
+
       const opts = [
-        ...allPacks.map(p => {
+        ...activePacks.map(p => {
           const q = state.quests[p.id];
           const storyCount = p.stories.length;
-          const done = q?.completedAt ? A.brightGreen + ' ✓ completed' + A.reset : '';
-          const resumed = q && !q.completedAt && q.completedStepIds.length > 0
+          const isMain = MAIN_QUEST_IDS.has(p.id);
+          const mainBadge = isMain ? A.brightGreen + ' ★ MAIN QUEST' + A.reset : '';
+          const resumed = q && q.completedStepIds.length > 0
             ? A.yellow + ` (in progress)` + A.reset
             : '';
           const stories = A.dim + ` [${storyCount} stories]` + A.reset;
-          return `${p.title}${stories}${done}${resumed}`;
+          return `${p.title}${stories}${mainBadge}${resumed}`;
         }),
+        ...(completedPacks.length > 0
+          ? [A.dim + `◆ Completed Quests  (${completedPacks.length})` + A.reset]
+          : []),
         A.dim + 'Quit' + A.reset,
       ];
 
@@ -288,8 +341,13 @@ export default function TerminalGame() {
 
       if (picked.includes('Quit')) return null;
 
+      // Completed quests subfolder
+      if (picked.includes('Completed Quests')) {
+        return showCompletedQuests(completedPacks);
+      }
+
       const idx = opts.indexOf(picked);
-      return allPacks[idx] ?? null;
+      return activePacks[idx] ?? null;
     };
 
     // ────────────────────────────────────────────────────────────────────────
@@ -543,11 +601,23 @@ export default function TerminalGame() {
         wln();
       }
 
-      await typewrite('  ' + A.white + wrapText(step.narration) + A.reset, 12);
+      await typewrite('  ' + A.white + wrapText(step.narration) + A.reset, 15);
       wln('\r\n');
+
+      // Solution panel for beginner steps
+      if (step.solution) {
+        wln(box([
+          `${A.brightGreen}→ try:${A.reset}  ${A.bold}${A.brightWhite}${step.solution}${A.reset}`,
+        ], A.brightGreen));
+        wln();
+      }
+
+      const hintLine = step.solution
+        ? `${A.dim}XP: ${step.xp}  •  s = skip  •  q = quit${A.reset}`
+        : `${A.dim}XP: ${step.xp}  •  h = hint  •  s = skip  •  q = quit${A.reset}`;
       wln(box([
         `${A.brightYellow}Objective:${A.reset} ${step.objective}`,
-        `${A.dim}XP: ${step.xp}  •  h = hint  •  s = skip  •  q = quit${A.reset}`,
+        hintLine,
       ]));
       wln();
     };
@@ -594,6 +664,12 @@ export default function TerminalGame() {
     // KEY HANDLER
     // ────────────────────────────────────────────────────────────────────────
     const handleKey = (key: string, domEvent: KeyboardEvent) => {
+      // Spacebar skips typewriter animation
+      if (isTyping && domEvent.key === ' ') {
+        skipTyping = true;
+        return;
+      }
+
       if (isChoosing) {
         if (domEvent.key === 'ArrowUp') {
           choiceIndex = Math.max(0, choiceIndex - 1);

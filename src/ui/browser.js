@@ -15,26 +15,42 @@ export function renderProfileHeader(profile) {
   console.log(divider());
 }
 
+const MAIN_QUEST_IDS = new Set(['terminal-basics', 'terminal-basics-2']);
+
 export async function pickQuest(packs, progressState) {
   if (packs.length === 0) {
     console.log(palette.danger('No quest packs found in /quests.'));
     return { action: 'exit' };
   }
 
-  const choices = packs.map((pack) => {
+  const activePacks  = packs.filter(p => !progressState.quests[p.id]?.completedAt);
+  const completedIds = new Set(packs.filter(p => progressState.quests[p.id]?.completedAt).map(p => p.id));
+
+  const makeChoice = (pack) => {
     const q = progressState.quests[pack.id];
     const storyCount = pack.stories?.length ?? 1;
     const done = q ? q.completedStepIds.length : 0;
+    const isMain = MAIN_QUEST_IDS.has(pack.id);
+    const mainBadge = isMain ? palette.ok(' ★ MAIN QUEST') : '';
     const status =
-      q?.completedAt ? palette.ok(`${symbols.check} completed`) :
       done > 0 ? palette.warn(`${symbols.arrow} in progress`) :
       palette.muted(`${symbols.star} new`);
     return {
-      name: `${palette.accent(pack.title)}  ${palette.muted(symbols.bullet)}  ${palette.muted(pack.tool)}  ${palette.muted(`[${storyCount} stories]`)}  ${status}\n      ${palette.muted(pack.synopsis)}`,
+      name: `${palette.accent(pack.title)}${mainBadge}  ${palette.muted(symbols.bullet)}  ${palette.muted(pack.tool)}  ${palette.muted(`[${storyCount} stories]`)}  ${status}\n      ${palette.muted(pack.synopsis)}`,
       value: pack.id,
       short: pack.title
     };
-  });
+  };
+
+  const choices = activePacks.map(makeChoice);
+
+  if (completedIds.size > 0) {
+    choices.push({
+      name: palette.muted(`${symbols.gem} Completed Quests  ${palette.dim(`(${completedIds.size})`)}`),
+      value: '__completed__',
+      short: 'Completed Quests'
+    });
+  }
   choices.push({ name: palette.muted(`${symbols.cross} Quit`), value: '__quit__', short: 'quit' });
 
   const pick = await select({
@@ -45,6 +61,36 @@ export async function pickQuest(packs, progressState) {
   });
 
   if (pick === '__quit__') return { action: 'exit' };
+  if (pick === '__completed__') return { action: 'completed' };
+  return { action: 'play', packId: pick };
+}
+
+export async function pickCompletedQuest(packs, progressState) {
+  const completed = packs.filter(p => progressState.quests[p.id]?.completedAt);
+  if (completed.length === 0) {
+    console.log(palette.muted('  No completed quests yet.'));
+    return null;
+  }
+
+  const choices = completed.map((pack) => {
+    const q = progressState.quests[pack.id];
+    const completedAt = q?.completedAt ? new Date(q.completedAt).toLocaleDateString() : '';
+    return {
+      name: `${palette.ok(`${symbols.check}`)}  ${palette.accent(pack.title)}  ${palette.muted(`completed ${completedAt}`)}\n      ${palette.muted(pack.synopsis)}`,
+      value: pack.id,
+      short: pack.title
+    };
+  });
+  choices.push({ name: palette.muted(`${symbols.arrow} Back`), value: '__back__', short: 'back' });
+
+  const pick = await select({
+    message: pinkCyan('Completed Quests — replay any time'),
+    choices,
+    loop: false,
+    pageSize: Math.max(6, choices.length)
+  });
+
+  if (pick === '__back__') return null;
   return { action: 'play', packId: pick };
 }
 

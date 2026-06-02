@@ -29,8 +29,17 @@ export function createPlayerUi() {
         console.log('');
       }
 
-      await typewriter('  ' + step.narration, { cps: 480, gradientFn: undefined });
+      await typewriter('  ' + step.narration, { cps: 552, gradientFn: undefined });
       console.log('');
+
+      // Solution panel — shown for beginner steps instead of hints
+      if (step.solution) {
+        console.log(panel(
+          `${palette.ok('→ try:')}  ${chalk.bold(step.solution)}`,
+          { color: 'green', title: '  solution  ' }
+        ));
+      }
+
       console.log(panel(palette.accent(step.objective), { color: 'cyan', title: '  objective  ' }));
     },
 
@@ -44,12 +53,10 @@ export function createPlayerUi() {
         return { kind: 'run', answer };
       }
 
-      const footer = keyHint([
-        { key: 'enter', label: 'run' },
-        { key: 'h', label: 'hint' },
-        { key: 's', label: 'skip' },
-        { key: 'q', label: 'quit' }
-      ]);
+      const hintKeys = step.solution
+        ? [{ key: 'enter', label: 'run' }, { key: 's', label: 'skip' }, { key: 'q', label: 'quit' }]
+        : [{ key: 'enter', label: 'run' }, { key: 'h', label: 'hint' }, { key: 's', label: 'skip' }, { key: 'q', label: 'quit' }];
+      const footer = keyHint(hintKeys);
       console.log('  ' + footer);
 
       const raw = await input({

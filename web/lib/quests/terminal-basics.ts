@@ -31,6 +31,7 @@ const pack: Pack = {
             'Type the command and press Enter: ls',
             'Run exactly: `ls`',
           ],
+          solution: 'ls',
           xp: 20,
         },
         {
@@ -53,6 +54,7 @@ const pack: Pack = {
             'Combine both flags: `ls -al` or `ls -la` — both work.',
             'Run exactly: `ls -al`',
           ],
+          solution: 'ls -al',
           xp: 25,
         },
         {
@@ -74,6 +76,7 @@ const pack: Pack = {
             'Create your staging directory with: mkdir classified',
             'Run exactly: `mkdir classified`',
           ],
+          solution: 'mkdir classified',
           xp: 20,
         },
         {
@@ -95,6 +98,7 @@ const pack: Pack = {
             'Copy README.md into classified/ with a new name: cp README.md classified/intel.txt',
             'Run exactly: `cp README.md classified/intel.txt`',
           ],
+          solution: 'cp README.md classified/intel.txt',
           xp: 25,
         },
         {
