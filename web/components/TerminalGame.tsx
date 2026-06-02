@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import MobilePreview from './MobilePreview';
 import { allPacks } from '@/lib/quests';
 import { verifyStep } from '@/lib/verifier';
 import { nextHint, xpAfterHints } from '@/lib/hints';
@@ -117,8 +118,8 @@ function xpBar(xp: number, width = 30): string {
   return A.brightGreen + '█'.repeat(filled) + A.dim + '░'.repeat(empty) + A.reset;
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-export default function TerminalGame() {
+// ─── Desktop Terminal (xterm-based) ──────────────────────────────────────────
+function DesktopTerminal() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -825,4 +826,22 @@ export default function TerminalGame() {
       }}
     />
   );
+}
+
+// ─── Main Export — detects mobile and delegates ───────────────────────────────
+export default function TerminalGame() {
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const mobile = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    setIsMobile(mobile);
+  }, []);
+
+  if (isMobile === null) {
+    return <div style={{ width: '100vw', height: '100vh', background: '#0a0a0f' }} />;
+  }
+  if (isMobile) {
+    return <MobilePreview />;
+  }
+  return <DesktopTerminal />;
 }
