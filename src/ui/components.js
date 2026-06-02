@@ -42,7 +42,7 @@ function wordWrap(text, maxWidth) {
 }
 
 export async function typewriter(text, { cps = 368, gradientFn } = {}) {
-  const width = Math.min(termWidth(), 90) - 4;
+  const width = Math.min(termWidth(), 110) - 4;
   const wrapped = wordWrap(text, width);
   if (!supportsAnimation() || process.env.TT_NO_TYPEWRITER === '1') {
     process.stdout.write((gradientFn ? gradientFn(wrapped) : wrapped) + '\n');

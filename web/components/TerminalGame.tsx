@@ -74,7 +74,7 @@ const LOGO_LINES = [
   '     ╚═╝    ╚═════╝    ╚═╝    ╚═════╝ ╚═╝  ╚═╝',
 ];
 
-const BOX_WIDTH = 70;
+const BOX_WIDTH = 82;
 const NARRATION_WIDTH = BOX_WIDTH - 4; // visible wrap width for narration text
 
 function wrapText(text: string, maxWidth: number = NARRATION_WIDTH): string {
@@ -613,13 +613,15 @@ function DesktopTerminal() {
         wln();
       }
 
-      const hintLine = step.solution
-        ? `${A.dim}XP: ${step.xp}  •  s = skip  •  q = quit${A.reset}`
-        : `${A.dim}XP: ${step.xp}  •  h = hint  •  s = skip  •  q = quit${A.reset}`;
-      wln(box([
-        `${A.brightYellow}Objective:${A.reset} ${step.objective}`,
-        hintLine,
-      ]));
+      if (step.solution) {
+        // Solution panel already shows the command — just show XP/key hints as plain text
+        wln(`  ${A.dim}XP: ${step.xp}  •  s = skip  •  q = quit${A.reset}`);
+      } else {
+        wln(box([
+          `${A.brightYellow}Objective:${A.reset} ${step.objective}`,
+          `${A.dim}XP: ${step.xp}  •  h = hint  •  s = skip  •  q = quit${A.reset}`,
+        ]));
+      }
       wln();
     };
 

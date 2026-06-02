@@ -40,7 +40,10 @@ export function createPlayerUi() {
         ));
       }
 
-      console.log(panel(palette.accent(step.objective), { color: 'cyan', title: '  objective  ' }));
+      // Only show objective box when there's no solution panel (avoids repeating the same command)
+      if (!step.solution) {
+        console.log(panel(palette.accent(step.objective), { color: 'cyan', title: '  objective  ' }));
+      }
     },
 
     async promptCommand(step) {
