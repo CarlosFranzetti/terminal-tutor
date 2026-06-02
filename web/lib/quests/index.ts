@@ -3,9 +3,10 @@ import terminalBasics2 from './terminal-basics-2';
 import githubCli from './github-cli';
 import copilotCli from './copilot-cli';
 import claudeCode from './claude-code';
+import gitBasics from './git-basics';
 import type { Pack } from '../types';
 
-const packs: Pack[] = [terminalBasics, terminalBasics2, githubCli, copilotCli, claudeCode];
+const packs: Pack[] = [terminalBasics, terminalBasics2, githubCli, copilotCli, claudeCode, gitBasics];
 
 export const allPacks: Pack[] = packs.sort((a, b) => {
   const ao = typeof a.order === 'number' ? a.order : Infinity;
